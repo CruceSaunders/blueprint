@@ -1,0 +1,346 @@
+@import "tailwindcss";
+
+/*
+  Blueprint site tokens. Literal values; colours come from the app icon (assets/icon/icon.svg):
+    navy   #1E2A5E  the icon tile; the primary action in light mode
+    grid   #3A4C8F  the icon's grid lines; the page's blueprint grid
+    sky    #8FB4FF  the icon's child cards; the primary action in dark mode
+    amber  #FFC857  the icon's centre dot; used once: the command caret
+  Type: Schibsted Grotesk (display + body), JetBrains Mono (the command and file paths).
+*/
+@theme {
+  --color-navy: #1e2a5e;
+  --color-sky: #8fb4ff;
+  --color-amber: #ffc857;
+
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-cta: var(--cta);
+  --color-cta-ink: var(--cta-ink);
+  --color-cta-hover: var(--cta-hover);
+  --color-card: var(--card);
+
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", monospace;
+
+  --text-display: clamp(2.5rem, 1.1rem + 5.4vw, 5.4rem);
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.035em;
+  --text-h2: clamp(2rem, 1.1rem + 3vw, 3.6rem);
+  --text-h2--line-height: 1.02;
+  --text-h2--letter-spacing: -0.03em;
+  --text-lead: clamp(1.125rem, 1rem + 0.45vw, 1.3rem);
+  --text-lead--line-height: 1.5;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7fb;
+  --bg-2: #eceff8;
+  --ink: #10162f;
+  --muted: #4a5372;
+  --line: rgb(30 42 94 / 0.12);
+  --grid: rgb(58 76 143 / 0.09);
+  --cta: #1e2a5e;
+  --cta-ink: #ffffff;
+  --cta-hover: #2a3a7f;
+  --shot-shadow: 0 1px 2px rgb(16 22 47 / 0.06), 0 24px 60px -20px rgb(30 42 94 / 0.28);
+  --line-strong: rgb(30 42 94 / 0.2);
+  --card: #ffffff;
+  /* Relationship line colours, from app/src/index.css (light). */
+  --edge: oklch(0.5 0.012 260);
+  --soft: oklch(0.68 0.008 260);
+  --good: oklch(0.58 0.13 155);
+  --bad: oklch(0.58 0.19 25);
+  --warn: oklch(0.7 0.14 70);
+}
+
+/* Dark: the app's own dark canvas (#0d0d0f) and panel (#18191c), so captures sit on the page with no seam. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d0d0f;
+    --bg-2: #141518;
+    --ink: #eef0f4;
+    --muted: #a3a7b2;
+    --line: rgb(255 255 255 / 0.1);
+    --line-strong: rgb(255 255 255 / 0.18);
+    --grid: rgb(143 180 255 / 0.06);
+    --cta: #8fb4ff;
+    --cta-ink: #0d0d0f;
+    --cta-hover: #a9c5ff;
+    --shot-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 30px 80px -24px rgb(0 0 0 / 0.8);
+    --card: #18191c;
+    /* Relationship line colours, from app/src/index.css (.dark). */
+    --edge: oklch(0.72 0.01 260);
+    --soft: oklch(0.55 0.008 260);
+    --good: oklch(0.72 0.14 155);
+    --bad: oklch(0.7 0.17 25);
+    --warn: oklch(0.8 0.13 75);
+  }
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  overflow-x: clip;
+}
+
+::selection {
+  background: rgb(143 180 255 / 0.4);
+}
+
+:focus-visible {
+  outline: 2px solid var(--cta);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* The blueprint grid, faded at the edges (pattern from 21st.dev "Download Section with Column Lines"). */
+.grid-bg {
+  background-image:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: center top;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 75%);
+}
+
+/* Product captures: framed, never restyled. */
+.shot {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shot-shadow);
+  overflow: hidden;
+  background: var(--bg-2);
+}
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* One idea per section, with generous but not empty spacing between sections. */
+.beat {
+  margin-top: 7rem;
+}
+@media (min-width: 640px) {
+  .beat {
+    margin-top: 11rem;
+  }
+}
+@media (min-width: 1024px) {
+  .beat {
+    margin-top: 13rem;
+  }
+}
+
+/* The whole map stays legible on phones: it keeps a readable width and scrolls sideways. */
+@media (max-width: 639px) {
+  .map-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .map-scroll img {
+    width: 760px;
+    max-width: none;
+  }
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  padding: 0 1.4rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+  transition:
+    background-color 180ms var(--ease-out-quint),
+    border-color 180ms var(--ease-out-quint),
+    transform 180ms var(--ease-out-quint);
+}
+.btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+.btn-primary {
+  background: var(--cta);
+  color: var(--cta-ink);
+}
+.btn-primary:hover {
+  background: var(--cta-hover);
+  transform: translateY(-1px);
+}
+.btn-secondary {
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+.btn-secondary:hover {
+  border-color: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+/* ---------- Motion (all of it is off under prefers-reduced-motion) ---------- */
+
+/* Hero entrance: staggered rise (pattern from 21st.dev "Hero Section" with staggered text and button reveal). */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.enter {
+  animation: rise 800ms var(--ease-out-quint) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 60ms);
+}
+
+/* Scroll reveal: only hidden once JS has marked the page, so no-JS readers and crawlers see everything. */
+.js [data-reveal] {
+  transition:
+    opacity 700ms var(--ease-out-quint),
+    transform 700ms var(--ease-out-quint);
+  transition-delay: calc(var(--i, 0) * 80ms);
+}
+.js [data-reveal]:not([data-in]) {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+/* Hero capture settles from a slight tilt as it scrolls into place. */
+.tilt {
+  transform-origin: 50% 0%;
+}
+@supports (animation-timeline: view()) {
+  .tilt {
+    animation: settle linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 40%;
+  }
+  @keyframes settle {
+    from {
+      transform: perspective(1600px) rotateX(9deg) scale(0.96);
+    }
+    to {
+      transform: none;
+    }
+  }
+}
+
+/* Signature: the command types itself, then the map draws in from the top.
+   The trigger sits on an unclipped wrapper: IntersectionObserver ignores a fully clipped target. */
+.cmd-text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.js [data-play]:not([data-in]) .cmd-text {
+  max-width: 0;
+}
+.js [data-play] .cmd-text {
+  max-width: 24ch;
+  transition: max-width 900ms steps(22, end);
+}
+.caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.15em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--color-amber);
+  border-radius: 2px;
+  animation: blink 1.05s steps(1) 6;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.js [data-draw]:not([data-in]) .draw {
+  clip-path: inset(0 0 100% 0 round 14px);
+}
+.js [data-draw] .draw {
+  clip-path: inset(0 0 0 0 round 14px);
+  transition: clip-path 1500ms var(--ease-out-quint) 500ms;
+}
+
+/* Relationship picker. */
+.kind {
+  color: var(--muted);
+  border: 1px solid transparent;
+  transition:
+    color 200ms var(--ease-out-quint),
+    background-color 200ms var(--ease-out-quint),
+    border-color 200ms var(--ease-out-quint);
+}
+.kind:hover {
+  color: var(--ink);
+  background: var(--bg-2);
+}
+.kind[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--bg-2);
+  border-color: var(--line-strong);
+}
+/* The chosen line draws from A to B, then its badge appears. */
+.stage.play .stage-line {
+  animation: draw-line 700ms var(--ease-out-quint) both;
+}
+.stage.play .glyph-badge {
+  animation: badge-in 300ms var(--ease-out-quint) 450ms both;
+}
+@keyframes draw-line {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes badge-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .js [data-reveal]:not([data-in]) {
+    opacity: 1;
+    transform: none;
+  }
+  .js [data-play]:not([data-in]) .cmd-text {
+    max-width: 24ch;
+  }
+  .js [data-draw]:not([data-in]) .draw {
+    clip-path: none;
+  }
+}

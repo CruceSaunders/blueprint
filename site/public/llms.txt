@@ -1,0 +1,12 @@
+# Blueprint
+
+> Blueprint is a free, open-source Mac app that gives your AI a canvas. Tell Claude Code, Cursor or Codex "/visualize this system" and it draws a clear map of the system in the app.
+
+- Maps are made of cards, drawn visuals, operator symbols (A + B = C) and groups or layers.
+- Lines come in nine kinds: flow, increases, decreases, requires, becomes, equals, versus, blocks, relates.
+- Click any card or line to read what it means. Everything is editable by hand.
+- Projects hold systems, systems hold visuals. All of it is stored as plain files in ~/Blueprint on your Mac.
+- No account, no cloud, no model picker. It works with the AI subscriptions you already have, through a bundled MCP server.
+- On first launch, one click connects Blueprint to Claude Code, Cursor and Codex.
+- Requires macOS on Apple silicon.
+- Source: https://github.com/CruceSaunders/blueprint

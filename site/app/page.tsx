@@ -1,0 +1,131 @@
+import { SITE, SHOTS } from "@/site.config";
+import { Actions } from "@/components/actions";
+import { ShotImage, HeroShot } from "@/components/shot";
+import { Behaviour } from "@/components/behaviour";
+import { Kinds } from "@/components/kinds";
+
+export default function Home() {
+  return (
+    <>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-cta focus:px-4 focus:py-2 focus:text-cta-ink">
+        Skip to content
+      </a>
+      <header className="mx-auto flex max-w-6xl items-center px-5 pt-5 sm:px-8">
+        <a href="/" className="-my-2 flex min-h-[44px] items-center gap-2.5 py-2 text-[1.0625rem] font-semibold tracking-tight">
+          <img src="/logo.svg" width={30} height={30} alt="" className="size-[30px]" />
+          {SITE.name}
+        </a>
+      </header>
+
+      <main id="main">
+        {/* 1. Hero: what it is, and the one action. */}
+        <section className="relative">
+          <div aria-hidden className="grid-bg pointer-events-none absolute inset-x-0 -top-24 h-[760px]" />
+          <div className="relative mx-auto max-w-6xl px-5 pt-16 text-center sm:px-8 sm:pt-24">
+            <h1 className="mx-auto max-w-[21ch] text-display font-bold text-balance">
+              A canvas where your AI draws your systems
+            </h1>
+            <p className="mx-auto mt-6 max-w-[36rem] text-lead text-muted text-pretty">
+              Blueprint is a free Mac app. Claude Code, Cursor or Codex draw your systems as maps you can click and edit.
+            </p>
+            <div className="enter mt-9" style={{ ["--i" as string]: 2 }}>
+              <Actions center />
+              <p className="mt-4 text-[0.9375rem] text-muted">{SITE.requirement}</p>
+            </div>
+          </div>
+          <div className="relative mx-auto mt-14 max-w-6xl px-3 sm:mt-20 sm:px-8">
+            <div className="shot tilt">
+              <HeroShot shot={SHOTS.app} />
+            </div>
+          </div>
+        </section>
+
+        {/* 2. Signature: one command, then the map draws in. */}
+        <section className="beat mx-auto max-w-6xl px-5 sm:px-8" data-play>
+          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-16">
+            <div>
+              <h2 className="text-h2 font-bold">Type one command. Get a map.</h2>
+              <p className="mt-5 max-w-[34rem] text-lead text-muted text-pretty">
+                Cards, drawings, groups and lines. It can even write <span className="whitespace-nowrap">A × B = C</span>.
+              </p>
+            </div>
+            <div>
+              <p className="inline-flex items-center rounded-xl border border-line bg-bg-2 px-4 py-3 font-mono text-[1rem] sm:text-[1.0625rem]">
+                <span aria-hidden className="mr-3 text-muted">&gt;</span>
+                <span className="cmd-text">/visualize this system</span>
+                <span aria-hidden className="caret" />
+              </p>
+              <p className="mt-3 max-w-[22rem] text-[0.9375rem] text-muted">
+                On first launch, one click connects Blueprint to Claude Code, Cursor and Codex.
+              </p>
+            </div>
+          </div>
+          <div data-draw className="mt-12">
+            <div className="shot draw map-scroll">
+              <ShotImage shot={SHOTS.map} sizes="(min-width: 1200px) 1150px, 760px" />
+            </div>
+          </div>
+        </section>
+
+        {/* 3. Every line has a meaning. */}
+        <section className="beat mx-auto max-w-6xl px-5 sm:px-8">
+          <div className="max-w-[40rem]" data-reveal>
+            <h2 className="text-h2 font-bold">Every line says what it means.</h2>
+            <p className="mt-5 text-lead text-muted text-pretty">Click any card or line in the app to read why it is there.</p>
+          </div>
+          <Kinds />
+        </section>
+
+        {/* 4. Yours, on your Mac. */}
+        <section className="beat mx-auto grid max-w-6xl items-center gap-10 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16">
+          <div data-reveal>
+            <h2 className="text-h2 font-bold">Plain files on your Mac.</h2>
+            <p className="mt-5 max-w-[32rem] text-lead text-muted text-pretty">
+              Edit anything by hand. No account, no cloud: it uses the AI subscriptions you already have.
+            </p>
+          </div>
+          <pre
+            className="overflow-x-auto rounded-[14px] border border-line bg-bg-2 p-6 font-mono text-[0.875rem] leading-7 text-muted sm:p-8 sm:text-[0.9375rem]"
+            data-reveal
+            style={{ ["--i" as string]: 1 }}
+          >
+            <span className="text-ink">~/Blueprint/projects/</span>
+            {"\n  coffee-shop/\n    systems/\n      how-the-shop-makes-money/\n        visuals/\n          "}
+            <span className="text-ink">overview.json</span>
+          </pre>
+        </section>
+
+        {/* 5. Close: the same action. */}
+        <section className="beat relative overflow-hidden">
+          <div aria-hidden className="grid-bg pointer-events-none absolute inset-0" style={{ maskImage: "radial-gradient(ellipse 60% 70% at 50% 50%, #000 20%, transparent 75%)" }} />
+          <div className="relative mx-auto max-w-6xl px-5 py-12 text-center sm:px-8 sm:py-16" data-reveal>
+            <img src="/logo.svg" width={64} height={64} alt="" className="mx-auto mb-8 size-16" />
+            <h2 className="text-h2 font-bold">Give your AI a canvas.</h2>
+            <div className="mt-10">
+              <Actions center />
+              <p className="mt-4 text-[0.9375rem] text-muted">{SITE.requirement}</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-line">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-8 text-[0.9375rem] text-muted sm:px-8">
+          <span className="flex items-center gap-2">
+            <img src="/logo.svg" width={20} height={20} alt="" className="size-5" />
+            {SITE.name}
+          </span>
+          <span className="flex flex-wrap gap-x-6">
+            <a href={SITE.issuesUrl} className="inline-flex min-h-[44px] items-center underline-offset-4 hover:text-ink hover:underline">
+              Report an issue
+            </a>
+            <a href={SITE.githubUrl} className="inline-flex min-h-[44px] items-center underline-offset-4 hover:text-ink hover:underline">
+              Source on GitHub
+            </a>
+          </span>
+        </div>
+      </footer>
+      <Behaviour />
+    </>
+  );
+}
