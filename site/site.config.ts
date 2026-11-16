@@ -2,7 +2,7 @@
 export const SITE = {
   name: "Blueprint",
   // Set at deploy time. Canonical, og:url, og:image, twitter:image, robots.txt and sitemap.xml all derive from it.
-  url: "https://blueprint.example.com",
+  url: "https://blueprint-canvas-lovat.vercel.app",
   title: "Blueprint: a canvas where your AI draws your systems",
   description:
     "Blueprint is a free, open-source Mac app. Ask Claude Code, Cursor or Codex to /visualize a system and it draws a clear map you can click, read and edit.",
