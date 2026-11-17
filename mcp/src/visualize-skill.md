@@ -8,7 +8,7 @@ description: Draw visual maps of ideas and systems in Blueprint, a local Mac app
 Blueprint is a local Mac app (files in ~/Blueprint/) for storing visual maps of ideas and systems as Project -> System -> Visual. You drive it through the `blueprint` MCP server. Treat `$ARGUMENTS` (or the user's request) as what to visualize.
 
 ## Procedure
-1. Call the `blueprint` MCP tool `guide` first and follow it (the same text is reproduced below). If the drawing fits one of the topics it lists, call `guide({topic})` for that method too. If no `blueprint` tools are loaded in this session, say so plainly (the MCP server is not connected here; run `Blueprint --connect` or restart the client) and stop; do not fake it.
+1. Call the `blueprint` MCP tool `guide` first and follow it (the same text is reproduced below). If the drawing fits one of the topics it lists, call `guide({topic})` for that method too; if you are unsure which drawing fits, call `guide({topic: "choose-the-drawing"})`. If no `blueprint` tools are loaded in this session, say so plainly (the MCP server is not connected here; run `Blueprint --connect` or restart the client) and stop; do not fake it.
 2. `list_projects`, then `list_systems`. Reuse the fitting project/system. Create what is missing (`create_project`, `create_system`, `create_visual`). Ask only if it is genuinely ambiguous which project this belongs to.
 3. Build the visual with `apply` (omit positions; auto-layout handles it). Fix any validation errors it returns and resend.
 4. Call `snapshot`, actually look at the image, fix overlaps, clutter or wrong relationships with another `apply`, and re-snapshot if you changed much.

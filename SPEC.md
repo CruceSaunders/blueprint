@@ -232,8 +232,8 @@ Server validates everything with zod and never writes outside the store.
 ## Design philosophy for AI-made visuals (in guide() and the visualize skill)
 - Accuracy first: every node and relationship must be true to what the user described or to the real system; never
   invent components to make a diagram look fuller. If unsure, add a node with state `question`.
-- One visual = one idea at one altitude. Aim for 5–12 nodes. More than ~15: split into several visuals of the same system
-  (an overview plus detail visuals) instead of crowding one.
+- One visual = one idea at one altitude. Aim for 5–9 nodes. Above 12: split into several visuals of the same system
+  (an overview plus detail visuals) instead of crowding one. If a sentence or small table teaches as much, do not draw.
 - The picture takes the system's shape: ring for a loop, hub for a centre, tree for a breakdown, flow for a sequence;
   tiers only when the system is layered. No boxes in boxes; one group level is the norm.
 - Show, don't caption, and put the art on the part: a drawing of a part is that card's `art`. Text on canvas stays short;

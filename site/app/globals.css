@@ -254,12 +254,18 @@ body {
   white-space: nowrap;
   vertical-align: bottom;
 }
+@media (max-width: 639px) {
+  .cmd-text {
+    white-space: normal;
+    min-width: 0;
+  }
+}
 .js [data-play]:not([data-in]) .cmd-text {
   max-width: 0;
 }
 .js [data-play] .cmd-text {
-  max-width: 24ch;
-  transition: max-width 900ms steps(22, end);
+  max-width: 42ch;
+  transition: max-width 1400ms steps(41, end);
 }
 .caret {
   display: inline-block;
@@ -282,48 +288,6 @@ body {
 .js [data-draw] .draw {
   clip-path: inset(0 0 0 0 round 14px);
   transition: clip-path 1500ms var(--ease-out-quint) 500ms;
-}
-
-/* Relationship picker. */
-.kind {
-  color: var(--muted);
-  border: 1px solid transparent;
-  transition:
-    color 200ms var(--ease-out-quint),
-    background-color 200ms var(--ease-out-quint),
-    border-color 200ms var(--ease-out-quint);
-}
-.kind:hover {
-  color: var(--ink);
-  background: var(--bg-2);
-}
-.kind[aria-pressed="true"] {
-  color: var(--ink);
-  background: var(--bg-2);
-  border-color: var(--line-strong);
-}
-/* The chosen line draws from A to B, then its badge appears. */
-.stage.play .stage-line {
-  animation: draw-line 700ms var(--ease-out-quint) both;
-}
-.stage.play .glyph-badge {
-  animation: badge-in 300ms var(--ease-out-quint) 450ms both;
-}
-@keyframes draw-line {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
-}
-@keyframes badge-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

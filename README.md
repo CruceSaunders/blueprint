@@ -7,6 +7,17 @@ and opens it for you. Everything stays on your Mac as plain JSON files.
 
 ![A Blueprint visual](docs/screenshot.png)
 
+## What's new in 0.2.1
+
+- **A drawing picker for the AI.** A new `choose-the-drawing` guide topic maps 19 common diagram types
+  (swimlane, timeline, state machine, org chart, quadrant, Venn, funnel, dependency graph, data model and more)
+  onto Blueprint's arrangements, shapes and line kinds, and says when a sentence or table is better than a drawing.
+- **Six behaviour patterns.** A queue at a bottleneck, a trust boundary, a lifecycle with retries, loose input
+  becoming a record, safeguards with leftover risk, and two traces compared.
+- **Draw less.** The guide now aims for 5-9 nodes per visual, splits above 12, and keeps emphasis to 1-2 focal nodes.
+- The picker and patterns adapt ideas from [diagram-design](https://github.com/cathrynlavery/diagram-design) by
+  Cathryn Lavery (MIT); see `mcp/skills/ATTRIBUTION.md`.
+
 ## What's new in 0.2.0
 
 - **A new layout engine.** Maps are laid out symmetrically and deterministically: tiers share one column grid,

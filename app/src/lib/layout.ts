@@ -1335,7 +1335,7 @@ export function diagnose(nodes: LNode[], edges: LEdge[]): string[] {
   const boxes = absoluteBoxes(nodes);
   const anc = new Map(nodes.map((n) => [n.id, new Set(ancestors(n.id, t))]));
   const content = nodes.filter((n) => n.kind !== "group");
-  if (content.length > 15) w.push(`crowded: ${content.length} non-group nodes (aim for 5-12; over ~15, split into an overview plus detail visuals).`);
+  if (content.length > 15) w.push(`crowded: ${content.length} non-group nodes (aim for 5-9; above 12, split into an overview plus detail visuals).`);
   for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
     const a = nodes[i], b = nodes[j];
     if (anc.get(a.id)!.has(b.id) || anc.get(b.id)!.has(a.id)) continue;

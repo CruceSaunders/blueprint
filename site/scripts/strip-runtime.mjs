@@ -19,7 +19,7 @@ for (const f of files) {
     .replace(/<script id="_R_">[\s\S]*?<\/script>/g, "");
   const left = (html.match(/_next\/static\/[^"']+\.js/g) || []).length;
   if (left) throw new Error(`${f}: ${left} runtime script reference(s) left; update strip-runtime.mjs`);
-  if (!html.includes("data-kinds") && f === "index.html") throw new Error("index.html: page content missing");
+  if (!html.includes("data-draw") && f === "index.html") throw new Error("index.html: page content missing");
   writeFileSync(p, html);
   console.log(`strip-runtime: ${f} ${before} -> ${html.length} bytes`);
 }

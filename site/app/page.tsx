@@ -2,7 +2,6 @@ import { SITE, SHOTS } from "@/site.config";
 import { Actions } from "@/components/actions";
 import { ShotImage, HeroShot } from "@/components/shot";
 import { Behaviour } from "@/components/behaviour";
-import { Kinds } from "@/components/kinds";
 
 export default function Home() {
   return (
@@ -26,7 +25,7 @@ export default function Home() {
               A canvas where your AI draws your systems
             </h1>
             <p className="mx-auto mt-6 max-w-[36rem] text-lead text-muted text-pretty">
-              Blueprint is a free Mac app. Claude Code, Cursor or Codex draw your systems as maps you can click and edit.
+              Blueprint is a free Mac app. Your AI agent draws your systems as maps you can click and edit. Works with Claude Code, Cursor, Codex, or any agent that speaks MCP.
             </p>
             <div className="enter mt-9" style={{ ["--i" as string]: 2 }}>
               <Actions center />
@@ -42,21 +41,15 @@ export default function Home() {
 
         {/* 2. Signature: one command, then the map draws in. */}
         <section className="beat mx-auto max-w-6xl px-5 sm:px-8" data-play>
-          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-16">
+          <div className="grid gap-8">
             <div>
               <h2 className="text-h2 font-bold">Type one command. Get a map.</h2>
-              <p className="mt-5 max-w-[34rem] text-lead text-muted text-pretty">
-                Cards, drawings, groups and lines. It can even write <span className="whitespace-nowrap">A × B = C</span>.
-              </p>
             </div>
             <div>
-              <p className="inline-flex items-center rounded-xl border border-line bg-bg-2 px-4 py-3 font-mono text-[1rem] sm:text-[1.0625rem]">
+              <p className="inline-flex max-w-full items-center rounded-xl border border-line bg-bg-2 px-4 py-3 font-mono text-[1rem] sm:text-[1.0625rem]">
                 <span aria-hidden className="mr-3 text-muted">&gt;</span>
-                <span className="cmd-text">/visualize this system</span>
+                <span className="cmd-text">/visualize how my coffee shop makes money</span>
                 <span aria-hidden className="caret" />
-              </p>
-              <p className="mt-3 max-w-[22rem] text-[0.9375rem] text-muted">
-                On first launch, one click connects Blueprint to Claude Code, Cursor and Codex.
               </p>
             </div>
           </div>
@@ -67,35 +60,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 3. Every line has a meaning. */}
-        <section className="beat mx-auto max-w-6xl px-5 sm:px-8">
-          <div className="max-w-[40rem]" data-reveal>
-            <h2 className="text-h2 font-bold">Every line says what it means.</h2>
-            <p className="mt-5 text-lead text-muted text-pretty">Click any card or line in the app to read why it is there.</p>
-          </div>
-          <Kinds />
-        </section>
-
-        {/* 4. Yours, on your Mac. */}
-        <section className="beat mx-auto grid max-w-6xl items-center gap-10 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16">
-          <div data-reveal>
-            <h2 className="text-h2 font-bold">Plain files on your Mac.</h2>
-            <p className="mt-5 max-w-[32rem] text-lead text-muted text-pretty">
-              Edit anything by hand. No account, no cloud: it uses the AI subscriptions you already have.
-            </p>
-          </div>
-          <pre
-            className="overflow-x-auto rounded-[14px] border border-line bg-bg-2 p-6 font-mono text-[0.875rem] leading-7 text-muted sm:p-8 sm:text-[0.9375rem]"
-            data-reveal
-            style={{ ["--i" as string]: 1 }}
-          >
-            <span className="text-ink">~/Blueprint/projects/</span>
-            {"\n  coffee-shop/\n    systems/\n      how-the-shop-makes-money/\n        visuals/\n          "}
-            <span className="text-ink">overview.json</span>
-          </pre>
-        </section>
-
-        {/* 5. Close: the same action. */}
+        {/* 3. Close: the same action. */}
         <section className="beat relative overflow-hidden">
           <div aria-hidden className="grid-bg pointer-events-none absolute inset-0" style={{ maskImage: "radial-gradient(ellipse 60% 70% at 50% 50%, #000 20%, transparent 75%)" }} />
           <div className="relative mx-auto max-w-6xl px-5 py-12 text-center sm:px-8 sm:py-16" data-reveal>

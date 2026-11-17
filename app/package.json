@@ -1,7 +1,7 @@
 {
   "name": "blueprint",
   "productName": "Blueprint",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Blueprint: local visual maps of ideas and systems",
   "main": "dist-electron/main.js",

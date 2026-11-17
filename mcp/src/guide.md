@@ -4,7 +4,8 @@ Blueprint is a local Mac app where the user keeps visual maps of ideas and syste
 
 ## Design philosophy
 - Accuracy first: every node and relationship must be true to what the user described or to the real system. Never invent components to make a diagram look fuller. If unsure, add a node with state `question`.
-- One visual = one idea at one altitude. Aim for 5-12 nodes. More than ~15: split into an overview plus detail visuals of the same system.
+- One visual = one idea at one altitude. Aim for 5-9 nodes. Above 12: split into an overview plus detail visuals of the same system.
+- **Draw less.** If a sentence or a small table teaches as much, write that and do not draw. Merge two nodes that always appear together. Drop a line when the layout or a group already shows the link. Give 1-2 focal nodes `tone: "accent"` or `weight: "lg"`; keep the rest neutral.
 - **The picture takes the system's own shape.** A loop is drawn as a ring, a central thing as a hub with spokes, a breakdown as a tree, a sequence as a straight flow. Tiers (stacked layer groups) only when the system really is layered. Never default to "boxes inside boxes".
 - **Art lives on the part.** When a drawing shows what a part does (a funnel for a filter, a cup for cups sold), put it on that card as `art`: the card IS the funnel, with its name under it. Never draw a part as a separate `visual` node joined to it by a `relates` / "illustrates" line; apply warns when it sees one.
 - **Symmetry and calm.** Blueprint centres every rank on one axis, spaces siblings evenly, attaches lines at side midpoints and keeps the main line straight. Your job is to give it a clean structure: few crossings, short labels, nothing placed by hand.
@@ -56,7 +57,7 @@ Edge fields: id, source, target, kind, label, explanation (required), both (arro
 
 ## How to work
 1. `list_projects` / `list_systems`; reuse what fits. `create_visual` (primary:true for a system's first).
-2. Decide the shape first: which arrangement, which nodes are steps (pill), actors (circle), decisions (diamond), and which part deserves its own drawing (`art`).
+2. Decide the shape first: which arrangement, which nodes are steps (pill), actors (circle), decisions (diamond), and which part deserves its own drawing (`art`). Unsure which drawing fits: `guide({topic: "choose-the-drawing"})`. Say the plan in one line (shape, arrangement, what you left out), then build without waiting for an answer.
 3. `apply({projectId, systemId, visualId, ops, layout?})`. Ops: add_node, update_node, remove_node, add_edge, update_edge, remove_edge, set_viewport. The batch is validated whole and rejected atomically with fixable messages. `layout`: `{arrangement?, direction?: "DOWN"|"RIGHT", relayout?: true}`; a new arrangement or direction re-places everything, and so does relayout. A group whose `arrangement`/`treatment` you patch re-places its own contents.
 4. `apply` returns `warnings` (overlap, clipped text, a line through a card or title, label clashes, crowding, `illustration-node`) and `tidiness` (`defects`: off-centre attachments, more than two bends, unequal gaps, off-axis ranks, lines through a group that holds neither end; plus `metrics`). Fix both to zero: usually by removing clutter, choosing a better arrangement, or turning an illustration node into `art`. Positions by hand are a last resort.
 5. Ids match `^[a-z0-9_]+(-[a-z0-9_]+)*$`, unique within the visual. Child positions are relative to the parent group. A patch value of `null` clears a field (`position: null` hands a node back to layout).

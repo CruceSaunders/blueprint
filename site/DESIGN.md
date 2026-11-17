@@ -25,9 +25,9 @@ Radius 14px on captures and code blocks, 12px on buttons. One shadow, on product
 ## Motion (all off under `prefers-reduced-motion`)
 - Hero entrance: rise + unblur, 800ms, `cubic-bezier(0.22, 1, 0.36, 1)`, 90ms stagger.
 - Hero capture: settles from a 9deg tilt as it scrolls in (scroll-driven, CSS only, where supported).
-- Signature: the `/visualize this system` command types (900ms, steps), then the map draws in top-down (clip-path, 1500ms).
+- Signature: the `/visualize how my coffee shop makes money` command types (1400ms, steps), then the map draws in top-down (clip-path, 1500ms).
 - Reveals: 700ms rise on headings and list rows; hidden only when JS is on.
-- Hover: buttons lift 1px; relationship words get an underline sweep.
+- Hover: buttons lift 1px.
 
 ## Component index
 | Component | Use |
@@ -35,5 +35,4 @@ Radius 14px on captures and code blocks, 12px on buttons. One shadow, on product
 | `Actions` | The only buttons: Download (primary) + GitHub (secondary). Hero and close only. |
 | `ShotImage` | Every product image; light/dark pair from `SHOTS`. Real captures only (`scripts/shoot.sh`). |
 | Text beat | H2 + one lead paragraph, max 40rem. |
-| Kind list | The nine relationship kinds, word + meaning on one line. |
 | Code block | Real paths only. |

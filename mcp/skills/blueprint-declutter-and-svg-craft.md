@@ -11,11 +11,11 @@ description: Load for the review pass after any Blueprint visual is written, and
 ### Method
 1. **Snapshot and look.** Call `snapshot` and actually read the image. Act on every warning (overlap, clipped text, edge through a card or a group title, label touching a card, crowding, illustration node) and every `tidiness` defect (off-centre attachment, more than two bends, unequal gaps, off-axis rank, a line through a group that holds neither end). Target: zero of both.
 2. **Shape test.** Does the arrangement match the system (ring for a loop, hub for a centre, flow for a sequence, tiers only for real layers)? Are there boxes inside boxes inside boxes? Change the arrangement before moving anything. Is a part drawn as a separate picture joined by a line? Move the drawing into the part's `art`.
-3. **Purpose test per node and edge.** Each must help answer the visual's question (in `description`). If it does not change what the reader understands, remove it or move the fact into a neighbour's `explanation`.
+3. **Purpose test per node and edge.** Each must help answer the visual's question (in `description`). If it does not change what the reader understands, remove it or move the fact into a neighbour's `explanation`. Merge two nodes that always appear together. A line the layout or a group already shows can go.
 4. **One home per fact.** A number or claim appears once on the canvas. If a card subtitle repeats an edge label or a note repeats a card, keep the clearest one.
 5. **Short text on canvas.** Title 5 words or fewer, subtitle 8 or fewer, edge label 1-4 words. If a title and subtitle split one thought, merge them into one title. Everything else goes in `explanation`.
-6. **Count.** Over ~15 non-group nodes: split into an overview visual plus detail visuals in the same system. Under 4: maybe it does not need a canvas.
-7. **Emphasis budget.** At most one `weight: "lg"` node per visual (two if there are two real centres). `tone` only where it means something (good result, risk, harm); not as decoration.
+6. **Count.** Aim for 5-9 non-group nodes. Above 12: split into an overview visual plus detail visuals in the same system. Under 4, or a list a sentence or small table says as well: do not draw it.
+7. **Emphasis budget.** 1-2 focal nodes per visual (`tone: "accent"` or `weight: "lg"`); the rest stay neutral. Other `tone`s only where they mean something (good result, risk, harm), never as decoration.
 8. **Check accuracy last.** Every node and edge is stated by the user or the source. Guesses become `state: "question"`. Edge kinds are literal (`relates` only when nothing better is known).
 9. Fix, re-apply (`layout: {"relayout": true}` after big changes), snapshot again. Stop when warnings and tidiness defects are zero, the picture is symmetric about its axis and the main path reads without hunting.
 
