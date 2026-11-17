@@ -148,3 +148,13 @@
 
 .bp-markdown { @apply prose prose-sm max-w-none dark:prose-invert; }
 .bp-markdown :where(p, ul, ol) { margin-top: 0.4em; margin-bottom: 0.4em; }
+
+/* Zoom controls: quiet until you reach for them. */
+.bp-controls.react-flow__controls { margin: 20px; border-radius: 999px; opacity: 0.55; transition: opacity 150ms; }
+.bp-controls.react-flow__controls:hover, .bp-controls.react-flow__controls:focus-within { opacity: 1; }
+.bp-controls .react-flow__controls-button { border-bottom: none; width: 30px; height: 30px; color: var(--muted-foreground); }
+.bp-controls .react-flow__controls-button:hover { color: var(--foreground); }
+/* Newly arrived visual from the AI: a gentle one-time glow on its sidebar row. */
+@keyframes bp-arrive { 0% { background: color-mix(in srgb, var(--tone-accent) 22%, transparent); } 100% { background: transparent; } }
+.bp-arrived { animation: bp-arrive 2.4s ease-out 1; }
+@media (prefers-reduced-motion: reduce) { .bp-arrived { animation: none; } }

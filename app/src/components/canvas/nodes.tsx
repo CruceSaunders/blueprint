@@ -3,7 +3,7 @@ import { Handle, NodeResizer, Position, useNodeId, type NodeProps, type Node } f
 import DOMPurify from "dompurify";
 import { icons, type LucideIcon } from "lucide-react";
 import type { BpNode } from "@/lib/types";
-import { CARD_METRICS, sizeOf, OPERATOR_SIZE, type LNode } from "@/lib/layout";
+import { ART_GAP, ART_H, CARD_METRICS, GROUP_METRICS, artOf, groupHeaderHeight, shapeOf, sizeOf, treatmentOf, OPERATOR_SIZE, type Art, type LNode } from "@/lib/layout";
 import { GROUP_INFO, STATE_INFO, TONE_VAR } from "@/lib/vocab";
 import { cn } from "@/lib/utils";
 
@@ -104,11 +104,11 @@ export function EditableText({ value, placeholder, onCommit, className, multilin
   );
 }
 
-function StateChip({ state }: { state?: BpNode["state"] }) {
+function StateChip({ state, center }: { state?: BpNode["state"]; center?: boolean }) {
   if (!state) return null;
   const info = STATE_INFO[state];
   return (
-    <span className="pointer-events-none absolute -top-2.5 right-2 inline-flex items-center gap-1 rounded-full border bg-card px-1.5 py-[1px] text-[10px] font-medium leading-4 text-muted-foreground shadow-xs">
+    <span className={cn("pointer-events-none absolute -top-2.5 z-10 inline-flex items-center gap-1 rounded-full border bg-card px-1.5 py-[1px] text-[10px] font-medium leading-4 text-muted-foreground shadow-xs", center ? "left-1/2 -translate-x-1/2" : "right-2")}>
       <span className="size-1.5 rounded-full" style={{ background: info.color }} />
       {info.name}
     </span>
@@ -133,47 +133,136 @@ function toneStyle(n: BpNode): React.CSSProperties {
   };
 }
 
-// ---------- card ----------
+// ---------- card (and its shapes: card | pill | circle | diamond | plain) ----------
+function shapeColors(n: BpNode) {
+  const tone = n.tone ?? "neutral";
+  if (tone === "neutral") return { stroke: "var(--border)", fill: "var(--card)" };
+  if (tone === "muted") return { stroke: "var(--border)", fill: "var(--muted)" };
+  const c = TONE_VAR[tone];
+  return { stroke: `color-mix(in srgb, ${c} 55%, var(--border))`, fill: `color-mix(in srgb, ${c} 7%, var(--card))` };
+}
+
+/** A card's own drawing, drawn inside the card (never as a separate node). */
+export function NodeArt({ art, title, height }: { art: Art; title?: string; height: number }) {
+  const { projectId } = useContext(CanvasCtx);
+  const clean = useMemo(() => (art.svg ? sanitizeSvg(art.svg) : ""), [art.svg]);
+  const frame = useMemo(() => (!art.svg && art.html ? frameUrl(art.html) : ""), [art.svg, art.html]);
+  const [broken, setBroken] = useState(false);
+  const src = !art.svg && !art.html && art.asset ? `bp-asset://${projectId}/${encodeURIComponent(art.asset)}` : "";
+  return (
+    <div className="pointer-events-none relative w-full shrink-0" style={{ height }} data-testid="node-art">
+      {art.svg ? (
+        <div className="size-full [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: clean }} />
+      ) : art.html ? (
+        <iframe title={title ?? "drawing"} sandbox="allow-scripts" src={frame} className="size-full border-0" referrerPolicy="no-referrer" />
+      ) : src && !broken ? (
+        <img src={src} alt={title ?? ""} className="size-full object-contain" draggable={false} onError={() => setBroken(true)} />
+      ) : (
+        <div className="flex size-full items-center justify-center text-[11px] text-muted-foreground">{art.asset ? `Missing file: ${art.asset}` : ""}</div>
+      )}
+    </div>
+  );
+}
+
+function Titles({ n, id, m, center }: { n: BpNode; id: string; m: { title: number; sub: number }; center?: boolean }) {
+  const { updateNode } = useContext(CanvasCtx);
+  return (
+    <div className={cn("min-w-0", center && "text-center")}>
+      <EditableText value={n.title} placeholder="Untitled" onCommit={(v) => updateNode(id, { title: v })}
+        className="font-semibold leading-snug tracking-[-0.01em] [overflow-wrap:anywhere]" style={{ fontSize: m.title }} />
+      <EditableText value={n.subtitle} onCommit={(v) => updateNode(id, { subtitle: v || undefined })}
+        className="mt-0.5 leading-snug text-muted-foreground [overflow-wrap:anywhere]" style={{ fontSize: m.sub }} />
+    </div>
+  );
+}
+
+function IconChip({ n, size }: { n: BpNode; size: number }) {
+  const Icon = lucideIcon(n.icon);
+  if (!Icon) return null;
+  const tone = n.tone ?? "neutral";
+  const c = tone === "neutral" ? "var(--tone-accent)" : TONE_VAR[tone];
+  return (
+    <div className="flex shrink-0 items-center justify-center rounded-lg" style={{ width: size, height: size, background: `color-mix(in srgb, ${c} 13%, transparent)`, color: c }}>
+      <Icon style={{ width: Math.round(size * 0.5), height: Math.round(size * 0.5) }} strokeWidth={1.8} />
+    </div>
+  );
+}
+
 export const CardNode = memo(function CardNode({ id, data, selected }: NodeProps<BpRfNode>) {
   const n = data.node;
-  const { updateNode } = useContext(CanvasCtx);
-  const Icon = lucideIcon(n.icon);
+  const ln = n as unknown as LNode;
   const weight = n.weight ?? "md";
   const m = CARD_METRICS[weight] ?? CARD_METRICS.md;
-  const tone = n.tone ?? "neutral";
-  const iconColor = tone === "neutral" ? "var(--tone-accent)" : TONE_VAR[tone];
+  const shape = shapeOf(ln);
+  const art = artOf(ln);
+  const artH = art ? ART_H[art.size ?? "md"] ?? ART_H.md : 0;
+  const box = boxStyle(n);
+  const ring = selected && "ring-2 ring-ring/60";
+  const col = shapeColors(n);
+  const dashed = n.state === "idea";
+  const shared = { "data-shape": shape } as Record<string, string>;
+
+  if (shape === "diamond") {
+    const s = sizeOf(ln);
+    return (
+      <div {...shared} className="relative flex items-center justify-center" style={box}>
+        <Resizer selected={!!selected} minW={120} minH={72} />
+        <svg className="pointer-events-none absolute inset-0 size-full overflow-visible" viewBox={`0 0 ${s.w} ${s.h}`} preserveAspectRatio="none">
+          <polygon points={`${s.w / 2},1 ${s.w - 1},${s.h / 2} ${s.w / 2},${s.h - 1} 1,${s.h / 2}`} style={{ fill: col.fill, stroke: selected ? "var(--ring)" : n.tone && n.tone !== "neutral" ? col.stroke : "color-mix(in srgb, var(--foreground) 24%, transparent)", strokeWidth: selected ? 2 : 1.5, strokeDasharray: dashed ? "5 4" : undefined, strokeLinejoin: "round" }} />
+        </svg>
+        <Handles />
+        <StateChip state={n.state} center />
+        <div className="relative" style={{ width: "50%" }}><Titles n={n} id={id} m={m} center /></div>
+      </div>
+    );
+  }
+  if (shape === "plain") {
+    return (
+      <div {...shared} className={cn("relative flex flex-col items-center rounded-xl", ring)} style={{ ...box, paddingTop: 0, gap: 8 }}>
+        <Resizer selected={!!selected} minW={80} minH={48} />
+        <Handles />
+        <StateChip state={n.state} center />
+        {art ? <NodeArt art={art} title={n.title} height={artH} /> : n.icon ? <IconChip n={n} size={40} /> : null}
+        <div className="w-full px-1"><Titles n={n} id={id} m={m} center /></div>
+      </div>
+    );
+  }
+  const frameStyle: React.CSSProperties = { ...box, background: col.fill, borderColor: col.stroke, borderWidth: m.border, borderStyle: dashed ? "dashed" : "solid" };
+  if (shape === "pill" || shape === "circle") {
+    const isCircle = shape === "circle";
+    return (
+      <div {...shared} className={cn("relative flex items-center justify-center rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.04)]", isCircle ? "flex-col" : "", ring)}
+        style={{ ...frameStyle, padding: isCircle ? 0 : "0 20px", gap: isCircle ? 6 : 8 }}>
+        <Resizer selected={!!selected} minW={isCircle ? 80 : 96} minH={isCircle ? 80 : 36} keepAspect={isCircle} />
+        <Handles />
+        <StateChip state={n.state} center={isCircle} />
+        {isCircle && art ? <div style={{ width: "50%" }}><NodeArt art={art} title={n.title} height={Math.min(artH, 56)} /></div>
+          : n.icon ? <IconChip n={n} size={isCircle ? 24 : 20} /> : null}
+        <div style={isCircle ? { width: "66%" } : { minWidth: 0 }}><Titles n={n} id={id} m={m} center /></div>
+      </div>
+    );
+  }
+  // rounded card
+  if (art) {
+    return (
+      <div {...shared} className={cn("relative flex flex-col items-center rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)]", ring)}
+        style={{ ...frameStyle, padding: `${m.padY}px ${m.padX}px`, gap: ART_GAP }}>
+        <Resizer selected={!!selected} minW={120} minH={80} />
+        <Handles />
+        <StateChip state={n.state} />
+        <NodeArt art={art} title={n.title} height={artH} />
+        <div className="w-full"><Titles n={n} id={id} m={m} center /></div>
+      </div>
+    );
+  }
   return (
-    <div
-      className={cn(
-        "relative flex items-center overflow-hidden rounded-xl border bg-card text-card-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
-        n.state === "idea" && "border-dashed",
-        selected && "ring-2 ring-ring/60",
-      )}
-      style={{ ...boxStyle(n), ...toneStyle(n), padding: `${m.padY}px ${m.padX}px`, gap: m.gap, borderWidth: m.border, overflow: "visible" }}
-    >
+    <div {...shared} className={cn("relative flex items-center rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.04)]", ring)}
+      style={{ ...frameStyle, padding: `${m.padY}px ${m.padX}px`, gap: m.gap }}>
       <Resizer selected={!!selected} minW={120} minH={48} />
       <Handles />
       <StateChip state={n.state} />
-      {Icon && (
-        <div className="flex shrink-0 items-center justify-center rounded-lg" style={{ width: m.icon, height: m.icon, background: `color-mix(in srgb, ${iconColor} 13%, transparent)`, color: iconColor }}>
-          <Icon className={weight === "lg" ? "size-5" : "size-4"} strokeWidth={1.8} />
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <EditableText
-          value={n.title}
-          placeholder="Untitled"
-          onCommit={(v) => updateNode(id, { title: v })}
-          className="font-semibold leading-snug tracking-[-0.01em] [overflow-wrap:anywhere]"
-          style={{ fontSize: m.title }}
-        />
-        <EditableText
-          value={n.subtitle}
-          onCommit={(v) => updateNode(id, { subtitle: v || undefined })}
-          className="mt-0.5 leading-snug text-muted-foreground [overflow-wrap:anywhere]"
-          style={{ fontSize: m.sub }}
-        />
-      </div>
+      <IconChip n={n} size={m.icon} />
+      <div className="min-w-0 flex-1"><Titles n={n} id={id} m={m} /></div>
     </div>
   );
 });
@@ -289,31 +378,47 @@ export const NoteNode = memo(function NoteNode({ id, data, selected }: NodeProps
   );
 });
 
-// ---------- group ----------
+// ---------- group: frame | band | tint | bracket | none ----------
 export const GroupNode = memo(function GroupNode({ id, data, selected }: NodeProps<BpRfNode>) {
   const n = data.node;
   const { updateNode } = useContext(CanvasCtx);
   const gk = n.groupKind ?? "group";
+  const tr = treatmentOf(n as unknown as LNode);
   const tone = n.tone && n.tone !== "neutral" ? TONE_VAR[n.tone] : "var(--tone-accent)";
+  const hair = "color-mix(in srgb, var(--foreground) 11%, transparent)";
   const style: React.CSSProperties =
-    gk === "layer"
-      ? { background: `color-mix(in srgb, ${tone} 6%, transparent)`, border: `1px solid color-mix(in srgb, ${tone} 22%, transparent)`, borderRadius: 14 }
-      : gk === "option"
-        ? { background: "color-mix(in srgb, var(--foreground) 2%, transparent)", border: "1.5px dashed color-mix(in srgb, var(--foreground) 30%, transparent)", borderRadius: 18 }
-        : gk === "boundary"
-          ? { background: "transparent", border: "2px dashed color-mix(in srgb, var(--tone-bad) 45%, var(--foreground) 20%)", borderRadius: 6 }
-          : { background: "color-mix(in srgb, var(--foreground) 3.5%, transparent)", border: "1px solid var(--border)", borderRadius: 16 };
+    tr === "band" ? { background: `color-mix(in srgb, ${tone} 3.5%, transparent)`, borderTop: `1px solid ${hair}`, borderBottom: `1px solid ${hair}` }
+      : tr === "tint" ? { background: `color-mix(in srgb, ${n.tone && n.tone !== "neutral" ? tone : "var(--foreground)"} ${n.tone && n.tone !== "neutral" ? 6 : 3.5}%, transparent)`, borderRadius: 20 }
+        : tr === "bracket" ? { borderLeft: `1.5px solid color-mix(in srgb, var(--foreground) 22%, transparent)` }
+          : tr === "none" ? {}
+            : gk === "layer" ? { background: `color-mix(in srgb, ${tone} 6%, transparent)`, border: `1px solid color-mix(in srgb, ${tone} 22%, transparent)`, borderRadius: 14 }
+              : gk === "option" ? { background: "color-mix(in srgb, var(--foreground) 2%, transparent)", border: "1.5px dashed color-mix(in srgb, var(--foreground) 30%, transparent)", borderRadius: 18 }
+                : gk === "boundary" ? { background: "transparent", border: "2px dashed color-mix(in srgb, var(--tone-bad) 45%, var(--foreground) 20%)", borderRadius: 6 }
+                  : { background: "color-mix(in srgb, var(--foreground) 3.5%, transparent)", border: "1px solid var(--border)", borderRadius: 16 };
+  const headH = groupHeaderHeight(n as unknown as LNode);
   return (
-    <div className={cn("relative size-full", selected && "ring-2 ring-ring/60")} style={{ ...style, ...(n.size ? {} : boxStyle(n)) }}>
+    <div data-treatment={tr} className={cn("relative size-full", selected && "ring-2 ring-ring/60")} style={{ ...style, ...(n.size ? {} : boxStyle(n)) }}>
       <Resizer selected={!!selected} minW={120} minH={80} />
       <Handles />
-      <div className="absolute left-3.5 top-2.5 flex max-w-[calc(100%-28px)] items-baseline gap-2">
-        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: gk === "boundary" ? "color-mix(in srgb, var(--tone-bad) 70%, var(--foreground))" : "var(--muted-foreground)" }}>
-          {GROUP_INFO[gk].name}
-        </span>
-        <EditableText value={n.title} placeholder="Untitled" onCommit={(v) => updateNode(id, { title: v })} className="truncate text-[13px] font-semibold" />
+      {tr === "bracket" && (
+        <>
+          <span className="pointer-events-none absolute -left-px top-0 h-px w-2.5" style={{ background: "color-mix(in srgb, var(--foreground) 22%, transparent)" }} />
+          <span className="pointer-events-none absolute -left-px bottom-0 h-px w-2.5" style={{ background: "color-mix(in srgb, var(--foreground) 22%, transparent)" }} />
+        </>
+      )}
+      <div className="absolute left-4 flex max-w-[calc(100%-32px)] flex-col justify-center" style={{ top: 0, height: headH - 8 }}>
+        <div className="flex items-baseline gap-2">
+          {tr === "frame" && (
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: gk === "boundary" ? "color-mix(in srgb, var(--tone-bad) 70%, var(--foreground))" : "var(--muted-foreground)" }}>
+              {GROUP_INFO[gk].name}
+            </span>
+          )}
+          <EditableText value={n.title} placeholder="Untitled" onCommit={(v) => updateNode(id, { title: v })}
+            className={cn("truncate font-semibold", tr === "band" ? "uppercase tracking-[0.09em] text-muted-foreground" : tr === "frame" ? "" : "text-muted-foreground")}
+            style={{ fontSize: tr === "band" ? GROUP_METRICS.bandPx : GROUP_METRICS.titlePx }} />
+        </div>
+        {n.subtitle && <div className="truncate text-[11.5px] text-muted-foreground">{n.subtitle}</div>}
       </div>
-      {n.subtitle && <div className="absolute left-3.5 top-7 truncate text-[11.5px] text-muted-foreground">{n.subtitle}</div>}
     </div>
   );
 });

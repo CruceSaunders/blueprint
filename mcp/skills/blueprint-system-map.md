@@ -17,74 +17,61 @@ Zoom levels, adapted from the C4 model (Simon Brown, c4model.com):
 
 Never mix levels on one visual (a database next to a whole partner company). If the user needs two levels, make two visuals in the same system: an overview (context or containers) and one detail visual per container that matters. Name the altitude in the visual `title` or `description`.
 
+## Choose the shape before the boxes
+- **One part everything touches** (a central service, a shared record, a coordinator): `layout.arrangement: "hub"`. It sits in the middle; the rest become mirrored spokes.
+- **Requests that pass through in order** (browser to API to database): `flow`, `direction` DOWN or RIGHT. The main path runs straight down the axis.
+- **Real tiers** (interface over logic over storage, where each tier only talks to the next): `layer` groups stacked in `flow`; they draw as light bands. Only when the system truly is layered; parts that merely belong together get a `tint` group or no group.
+- **A breakdown** (an organisation's units, a product's modules): `tree`.
+- **Peers with no order**: `grid` or `row`.
+Nest groups one level deep at most. A drawing of a part (a funnel for a filter, a database cylinder) goes on that card as `art`, never as a separate node joined by a line.
+
 ## Method
 1. Write the one question this visual answers in the visual `description`.
-2. Choose the altitude. List only parts that exist at that altitude and that the user stated or the source shows.
-3. Draw the border first: one `boundary` group for "inside the system"; outside actors stay top-level.
-4. Add the parts as cards inside it. Use `layer` groups only when the parts really form tiers (interface over logic over storage).
-5. Connect with the most literal edge kind, a short verb or protocol as `label` ("reads", "HTTPS", "nightly sync").
-6. Put each unknown (an unclear owner, a component mentioned but not explained) as a card with state `question`.
-7. Apply, snapshot, then run the blueprint-declutter-and-svg-craft review.
+2. Choose the altitude and list only parts that exist at it and that the user stated or the source shows.
+3. Pick the arrangement from the list above.
+4. If inside vs outside matters, add one `boundary` group (drawn as a frame); outside actors stay top-level.
+5. Connect with the most literal edge kind and a short verb or protocol as `label` ("reads", "HTTPS").
+6. Unknowns (an unclear owner, a part mentioned but not explained) are cards with state `question`.
+7. Apply, read `warnings` and `tidiness`, snapshot, then run the blueprint-declutter-and-svg-craft review.
 
 ## Mapping onto Blueprint
 | Real thing | Blueprint |
 |---|---|
-| Person, role, outside system | top-level `card` (icon e.g. `user`, `globe`) |
-| Running piece, store, team | `card` inside the boundary (icon e.g. `server`, `database`) |
-| The system's edge / trust or ownership line | `group` with `groupKind: "boundary"` |
-| Tiers in a stack | `group` with `groupKind: "layer"`, one per tier |
-| Parts that belong together without being a tier | `group` with `groupKind: "group"` |
+| Person, role, outside system | top-level `card` (icon e.g. `user`, `globe`); `shape: "circle"` for a person |
+| Running piece, store, team | `card` (icon e.g. `server`, `database`) |
+| A part whose look explains it | `card` with `art` |
+| The system's edge / trust line | `group`, `groupKind: "boundary"` |
+| Tiers in a stack | `group`, `groupKind: "layer"` (band), one per tier |
+| Parts that belong together | `group`, `groupKind: "group"` (soft tint) |
 | Calls, sends, writes to | `flow` with a verb label |
 | Cannot run without | `requires` (dashed) |
-| Two names for one thing | `equals`; better, merge into one card |
 | Not yet built / unclear | `state: "idea"` / `state: "question"` |
-| Already running | `state: "built"` only if the user said so |
 
 Gates and conditions belong on the edge they qualify (label "if paid", explanation says the rule), not on a floating card.
 
 ## Common mistakes
+- **Boxes in boxes**: every part inside a tier inside a frame. Fix: pick the arrangement that matches the system (hub, flow, tree); keep at most one group level.
 - **Mixed altitude**: a class name next to a whole outside company. Fix: move the detail to its own visual.
-- **Invented plumbing**: adding a cache, load balancer or queue because systems "usually" have one. Fix: draw only what was stated; ask with a `question` card.
-- **Everything `relates`**: lines with no meaning. Fix: say what moves (`flow` + verb) or what depends (`requires`); delete the line if neither is known.
+- **Invented plumbing**: adding a cache or queue because systems "usually" have one. Fix: draw only what was stated; ask with a `question` card.
+- **Everything `relates`**: say what moves (`flow` + verb) or what depends (`requires`).
 
-## Worked example (containers of a generic online bookshop)
+## Worked example (one customer record shared by every team)
 ```json
 {
-  "projectId": "demo", "systemId": "bookshop", "visualId": "containers",
-  "layout": { "direction": "RIGHT" },
+  "projectId": "demo", "systemId": "crm", "visualId": "hub",
+  "layout": { "arrangement": "hub" },
   "ops": [
-    { "op": "add_node", "node": { "id": "shopper", "kind": "card", "title": "Shopper", "icon": "user",
-      "explanation": "A person browsing and buying books. Outside the system." } },
-    { "op": "add_node", "node": { "id": "shop", "kind": "group", "groupKind": "boundary", "title": "Bookshop system",
-      "explanation": "Everything the bookshop runs itself. Lines that cross this border reach outside parties." } },
-    { "op": "add_node", "node": { "id": "web", "kind": "card", "parent": "shop", "title": "Web store", "subtitle": "Pages shoppers use", "icon": "monitor",
-      "explanation": "The site shoppers see. It holds no data itself and asks the API for everything." } },
-    { "op": "add_node", "node": { "id": "api", "kind": "card", "parent": "shop", "title": "Store API", "icon": "server", "weight": "lg",
-      "explanation": "Central service: catalogue, carts and orders. Every other part talks to it." } },
-    { "op": "add_node", "node": { "id": "db", "kind": "card", "parent": "shop", "title": "Orders database", "icon": "database",
-      "explanation": "Stores books, stock levels and orders. Only the API reads and writes it." } },
-    { "op": "add_node", "node": { "id": "search", "kind": "card", "parent": "shop", "title": "Search index", "icon": "search",
-      "explanation": "Copy of the catalogue tuned for fast title and author search." } },
-    { "op": "add_node", "node": { "id": "covers", "kind": "card", "parent": "shop", "title": "Cover image storage?", "state": "question",
-      "explanation": "The brief mentions cover images but not where they are kept. Unknown until confirmed." } },
-    { "op": "add_node", "node": { "id": "payments", "kind": "card", "title": "Payment provider", "icon": "credit-card",
-      "explanation": "Outside company that charges cards. The bookshop never stores card numbers." } },
-    { "op": "add_node", "node": { "id": "email", "kind": "card", "title": "Email service", "icon": "mail",
-      "explanation": "Outside service that delivers order receipts." } },
-    { "op": "add_edge", "edge": { "id": "e-shopper-web", "source": "shopper", "target": "web", "kind": "flow", "label": "browses, orders",
-      "explanation": "The shopper uses the web store in a browser." } },
-    { "op": "add_edge", "edge": { "id": "e-web-api", "source": "web", "target": "api", "kind": "flow", "label": "HTTPS",
-      "explanation": "Every page asks the API for data and sends orders to it." } },
-    { "op": "add_edge", "edge": { "id": "e-api-db", "source": "api", "target": "db", "kind": "flow", "label": "reads, writes",
-      "explanation": "The API is the only writer of orders and stock." } },
-    { "op": "add_edge", "edge": { "id": "e-api-search", "source": "api", "target": "search", "kind": "flow", "label": "queries",
-      "explanation": "Search requests go to the index, not the database." } },
-    { "op": "add_edge", "edge": { "id": "e-api-covers", "source": "api", "target": "covers", "kind": "relates",
-      "explanation": "Some link must exist for covers to show, but its form is not known yet." } },
-    { "op": "add_edge", "edge": { "id": "e-api-pay", "source": "api", "target": "payments", "kind": "flow", "label": "charges card",
-      "explanation": "At checkout the API asks the provider to take payment." } },
-    { "op": "add_edge", "edge": { "id": "e-api-email", "source": "api", "target": "email", "kind": "flow", "label": "sends receipt",
-      "explanation": "After a paid order the API asks the email service to send a receipt." } }
+    { "op": "add_node", "node": { "id": "record", "kind": "card", "title": "Customer record", "subtitle": "One per customer", "icon": "contact", "weight": "lg",
+      "explanation": "The single shared record of a customer. Every team reads and writes the same one." } },
+    { "op": "add_node", "node": { "id": "sales", "kind": "card", "title": "Sales", "icon": "handshake", "explanation": "Logs deals and contacts." } },
+    { "op": "add_node", "node": { "id": "support", "kind": "card", "title": "Support", "icon": "life-buoy", "explanation": "Logs tickets and fixes." } },
+    { "op": "add_node", "node": { "id": "billing", "kind": "card", "title": "Billing", "icon": "receipt", "explanation": "Logs invoices and payments." } },
+    { "op": "add_node", "node": { "id": "marketing", "kind": "card", "title": "Marketing", "icon": "megaphone", "explanation": "Reads the record to choose who hears about what." } },
+    { "op": "add_edge", "edge": { "id": "e-sales", "source": "sales", "target": "record", "kind": "flow", "label": "writes", "explanation": "Sales adds deals to the record." } },
+    { "op": "add_edge", "edge": { "id": "e-support", "source": "support", "target": "record", "kind": "flow", "label": "writes", "explanation": "Support adds tickets to the record." } },
+    { "op": "add_edge", "edge": { "id": "e-billing", "source": "billing", "target": "record", "kind": "flow", "label": "writes", "explanation": "Billing adds invoices to the record." } },
+    { "op": "add_edge", "edge": { "id": "e-marketing", "source": "record", "target": "marketing", "kind": "flow", "label": "reads", "explanation": "Marketing only reads the record." } }
   ]
 }
 ```
+The record is the hub; three teams write to it and one reads, so four spokes sit left, right, above and below, each joined by one straight line.

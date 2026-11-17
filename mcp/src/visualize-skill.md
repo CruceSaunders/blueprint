@@ -16,5 +16,5 @@ Blueprint is a local Mac app (files in ~/Blueprint/) for storing visual maps of 
 
 ## Images and capability
 - An agent that can generate images may add them with `add_asset` and an `image` node.
-- An agent that cannot draws inline SVG/HTML `visual` nodes instead.
+- An agent that cannot draws inline SVG instead, as the `art` of the card it depicts (or a standalone `visual` for a picture of the whole).
 - Never block on image generation.

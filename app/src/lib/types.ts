@@ -4,6 +4,11 @@ export type NodeState = "idea" | "question" | "decided" | "built";
 export type Weight = "sm" | "md" | "lg";
 export type NodeKind = "card" | "visual" | "image" | "operator" | "note" | "group";
 export type GroupKind = "group" | "layer" | "option" | "boundary";
+export type Shape = "card" | "pill" | "circle" | "diamond" | "plain";
+export type Arrangement = "flow" | "stack" | "row" | "column" | "ring" | "hub" | "tree" | "grid" | "free";
+export type Treatment = "frame" | "band" | "tint" | "bracket" | "none";
+/** A card's own drawing, rendered inside the card. Exactly one of svg, html, asset. */
+export interface NodeArt { svg?: string; html?: string; asset?: string; size?: "sm" | "md" | "lg" }
 export type Operator = "+" | "-" | "×" | "÷" | "=" | "&" | "or" | "≠" | ">" | "<";
 export type EdgeKind =
   | "flow" | "increases" | "decreases" | "requires" | "becomes"
@@ -33,6 +38,14 @@ export interface BpNode {
   html?: string;
   asset?: string;
   caption?: string;
+  /** kind=card: outline. card (default) | pill | circle | diamond | plain (no container). */
+  shape?: Shape;
+  /** kind=card: its own drawing, drawn inside the card above the title. */
+  art?: NodeArt;
+  /** kind=group: how its children are arranged. */
+  arrangement?: Arrangement;
+  /** kind=group: how the group is drawn. Default: layer=band, group=tint, option/boundary=frame. */
+  treatment?: Treatment;
 }
 
 export interface BpEdge {
@@ -57,6 +70,10 @@ export interface Visual {
   createdAt: string;
   updatedAt: string;
   viewport: { x: number; y: number; zoom: number };
+  /** Arrangement of the top-level canvas (set through apply's layout.arrangement). */
+  arrangement?: Arrangement;
+  /** Main direction of flow/tree arrangements. */
+  direction?: "DOWN" | "RIGHT";
   nodes: BpNode[];
   edges: BpEdge[];
 }
@@ -131,4 +148,4 @@ export interface BlueprintApi {
   connectRun(ids: string[]): Promise<{ ok: boolean; lines: string[] }>;
 }
 
-export interface ConnectTool { id: "claude" | "cursor" | "codex"; name: string; detected: boolean; evidence: string }
+export interface ConnectTool { id: "claude" | "cursor" | "codex"; name: string; detected: boolean; evidence: string; connected: boolean }

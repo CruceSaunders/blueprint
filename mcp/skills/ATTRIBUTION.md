@@ -38,4 +38,6 @@ The skill files in this folder are original writing for Blueprint unless a secti
 | blueprint-declutter-and-svg-craft.md | information-overload (author's own); visual-explainer (MIT) | Review steps adapted from the author's skill; SVG rules written fresh from Blueprint's sanitiser behaviour |
 | blueprint-svg-motifs.md | none | All ten SVG recipes drawn fresh for Blueprint |
 
+The arrangement guidance (choosing ring, hub, tree, flow or tiers from the system's shape), the "art on the part" rule and the symmetry/tidiness rules were added in the visual-v2 rewrite and are written fresh from general diagramming practice (centred ranks, midpoint ports, orthogonal routing with few bends); no source text was used.
+
 All worked examples use invented, generic subjects.

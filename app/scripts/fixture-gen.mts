@@ -1,11 +1,14 @@
-// Dev-only: writes a test fixture (every node kind, every edge kind, nested groups) to ~/Blueprint/projects/_fixture-test.
-// Usage: node scripts/fixture-gen.mts          Remove with: rm -rf ~/Blueprint/projects/_fixture-test
+// Dev-only: writes a test fixture (every node kind, shape, art, edge kind, nested groups, a ring) to
+// $BLUEPRINT_HOME/projects/_fixture-test. BLUEPRINT_HOME is required, so the real ~/Blueprint is never written.
+// Usage: BLUEPRINT_HOME=/tmp/bp node scripts/fixture-gen.mts
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { arrange } from "../src/lib/layout.ts";
 
-const root = path.join(os.homedir(), "Blueprint", "projects", "_fixture-test");
+const home = process.env.BLUEPRINT_HOME;
+if (!home || path.resolve(home) === path.join(os.homedir(), "Blueprint")) throw new Error("Set BLUEPRINT_HOME to a scratch directory (never the real ~/Blueprint).");
+const root = path.join(home, "projects", "_fixture-test");
 const t = new Date().toISOString();
 const ex = (s: string) => s;
 const nodes: any[] = [
@@ -29,6 +32,9 @@ const nodes: any[] = [
   { id: "memo", kind: "note", parent: "refs", title: "Reminder", caption: "Numbers here are illustrative.", explanation: ex("A side note.") },
   { id: "chart", kind: "image", parent: "refs", asset: "chart.svg", caption: "Last quarter", explanation: ex("An image asset.") },
   { id: "regulation", kind: "card", title: "Regulation", icon: "scale", tone: "warn", explanation: ex("Rules that apply to us.") },
+  { id: "decide", kind: "card", shape: "diamond", title: "Expand?", explanation: ex("A decision.") },
+  { id: "founder", kind: "card", shape: "circle", title: "Founder", icon: "user", explanation: ex("A person.") },
+  { id: "filter", kind: "card", shape: "plain", title: "Filter", art: { svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><path d="M10 6H110L70 40V56H50V40Z" fill="#6b8afd" fill-opacity=".3" stroke="currentColor" stroke-width="2"/></svg>` }, explanation: ex("A part drawn as itself.") },
 ];
 const e = (id: string, source: string, target: string, kind: string, extra: any = {}) => ({ id, source, target, kind, explanation: `${source} ${kind} ${target}.`, ...extra });
 const edges = [
@@ -45,6 +51,8 @@ const edges = [
   e("e11", "regulation", "automate", "blocks"),
   e("e13", "customers", "gauge", "relates"),
   e("e12", "customers", "churn", "flow", { both: true, label: "feedback" }),
+  e("e14", "founder", "decide", "flow"),
+  e("e15", "decide", "filter", "flow", { label: "yes" }),
 ];
 const arranged = await arrange(nodes, edges, { direction: "DOWN" });
 const laid = arranged.nodes;

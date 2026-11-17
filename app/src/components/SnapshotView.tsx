@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ReactFlow, ReactFlowProvider, useNodesInitialized, useReactFlow, getNodesBounds, ConnectionMode, applyNodeChanges } from "@xyflow/react";
+import { ReactFlow, ReactFlowProvider, useNodesInitialized, useReactFlow, ConnectionMode, applyNodeChanges } from "@xyflow/react";
 import { api } from "@/lib/api";
 import type { Visual, VisualIds } from "@/lib/types";
 import { toRfEdges, toRfNodes, withRoutes } from "@/lib/doc";
+import { contentBounds, viewportFor } from "@/lib/frame";
 import { CanvasCtx, nodeTypes, type BpRfNode } from "./canvas/nodes";
 import { EdgeMarkers, edgeTypes, type BpRfEdge } from "./canvas/edges";
 
 const noop = () => {};
+/** Padding round the drawing, in canvas units: the same on all four sides (lines and labels included). */
+const PAD = 48, MAX_ZOOM = 1.6;
+/** Zoom for a window `W` wide, and the screen padding that leaves on the left and right; the window height is then
+ *  chosen so the top and bottom get the same padding. */
+const frameAt = (b: { width: number }, W: number) => { const zoom = Math.min(MAX_ZOOM, W / (b.width + 2 * PAD)); return { zoom, pad: Math.floor((W - b.width * zoom) / 2) }; };
 
 function Inner({ ids }: { ids: VisualIds }) {
   const [doc, setDoc] = useState<Visual | null>(null);
@@ -23,26 +29,26 @@ function Inner({ ids }: { ids: VisualIds }) {
     }).catch((e) => api.snapshotError(String(e)));
   }, [ids]);
 
-  const edges = useMemo(() => (doc ? withRoutes(toRfEdges(doc.edges ?? []), doc.nodes ?? [], nodes) : []), [doc, nodes]);
+  const edges = useMemo(() => (doc ? withRoutes(toRfEdges(doc.edges ?? []), doc.nodes ?? [], nodes, { arrangement: doc.arrangement, direction: doc.direction }) : []), [doc, nodes]);
 
   useEffect(() => {
     if (!doc || sent.current) return;
     if (doc.nodes.length > 0 && !initialized) return;
     sent.current = true;
-    const all = rf.getNodes();
-    const b = all.length ? getNodesBounds(all) : { width: 800, height: 500 };
-    const pad = 80;
-    api.snapshotReady({ aspect: (b.height + pad) / (b.width + pad) });
-  }, [doc, initialized, rf]);
+    const b = contentBounds(rf.getNodes(), edges) ?? { width: 800, height: 500 };
+    const W = window.innerWidth, { zoom, pad } = frameAt(b, W);
+    api.snapshotReady({ aspect: (b.height * zoom + 2 * pad) / W });
+  }, [doc, initialized, rf, edges]);
 
   useEffect(() => api.onSnapshotFit(async () => {
-    await rf.fitView({ padding: 0.05, maxZoom: 1.6, minZoom: 0.05 });
+    const b = contentBounds(rf.getNodes(), edges);
+    if (b) { const W = window.innerWidth, H = window.innerHeight; await rf.setViewport(viewportFor(b, W, H, frameAt(b, W).pad, 0.05, MAX_ZOOM)); }
     const hasHtml = doc?.nodes.some((n) => n.kind === "visual" && n.html && !n.svg);
     const hasImg = doc?.nodes.some((n) => n.kind === "image");
     await document.fonts.ready;
     await new Promise((r) => setTimeout(r, hasHtml || hasImg ? 900 : 350));
     requestAnimationFrame(() => requestAnimationFrame(() => api.snapshotRendered()));
-  }), [rf, doc]);
+  }), [rf, doc, edges]);
 
   if (!doc) return null;
   return (

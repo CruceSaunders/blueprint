@@ -11,11 +11,12 @@ description: Load before drawing a decision or tradeoff in Blueprint - "compare 
 ## Method
 1. Write the decision as a question in the visual `description` ("Drive or take the train to work?").
 2. List the criteria that matter to the user (time, cost, risk...). Use only criteria the user named or clearly implied.
-3. Make one `option` group per alternative. Inside each, give every criterion its own card **in the same order and with parallel wording**, so the difference shows at a glance ("40 min each way" vs "55 min each way").
+3. Make one `option` group per alternative (drawn as an outlined frame; its cards stack in a column). Inside each, give every criterion its own card **in the same order and with parallel wording**, so the difference shows at a glance ("40 min each way" vs "55 min each way"). Matching rows line up because every group uses the same arrangement and card size.
 4. Join the option groups with one `versus` edge. Put the core tradeoff in its `label` ("time vs cost").
 5. If the reasoning combines facts, say it literally with an operator node: cheaper `+` usable time `→` choice.
 6. Add the choice as a card: `state: "decided"` once made, otherwise `state: "question"` with the open question as title. Unknown facts that could change the answer are separate `question` cards, linked from the choice with `requires`.
-7. Apply (`direction: "RIGHT"` reads well for side-by-side), snapshot, review.
+7. Apply (`direction: "RIGHT"` reads well: the options stack on the left, the reasoning runs right to the choice), read `warnings` and `tidiness`, snapshot, review.
+If a picture makes an option obvious (a car, a train), give that option's first card `art`; do not add separate picture nodes.
 
 ## Mapping onto Blueprint
 | Concept | Blueprint |
@@ -25,7 +26,7 @@ description: Load before drawing a decision or tradeoff in Blueprint - "compare 
 | The tradeoff | `versus` between option groups (or between two matched cards) |
 | Same thing under two names | `equals` |
 | A combining argument | `operator` node (`+`, `>`, `<`, `or`, `&`) with `flow` in and out |
-| The open question | `card`, `state: "question"` |
+| The open question | `card`, `shape: "diamond"` titled as the question, `state: "question"` |
 | The choice made | `card`, `state: "decided"`, `tone: "accent"` |
 | A fact the choice depends on | `requires` from the choice to that fact |
 | A dealbreaker | `blocks` from the fact to the option it rules out |

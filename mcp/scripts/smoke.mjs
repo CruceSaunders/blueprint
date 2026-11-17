@@ -1,6 +1,8 @@
 // Scripted MCP client run over stdio against a throwaway BLUEPRINT_HOME. Exits 0 only if every check passes.
-// Usage: node scripts/smoke.mjs                       (runs node dist/index.js)
+// Usage: BLUEPRINT_APP_BIN=<app binary> node scripts/smoke.mjs   (runs node dist/index.js; snapshots use that binary)
 //        node scripts/smoke.mjs --cmd <binary> [args]  (e.g. --cmd /path/Blueprint.app/Contents/MacOS/Blueprint --mcp)
+// The app used for snapshots must be named explicitly: the smoke test never falls back to an installed
+// /Applications/Blueprint.app, which may be a different version.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import fs from "node:fs"; import os from "node:os"; import path from "node:path";
@@ -11,6 +13,14 @@ const { sizeOf } = await import(pathToFileURL(path.join(dist, "layout.js")).href
 
 const ci = process.argv.indexOf("--cmd");
 const [command, ...cmdArgs] = ci >= 0 ? process.argv.slice(ci + 1) : [process.execPath, path.join(dist, "index.js")];
+if (ci < 0 && !process.env.BLUEPRINT_APP_BIN) {
+  console.error("smoke: name the app to test. Either --cmd <path/to/Blueprint.app/Contents/MacOS/Blueprint> --mcp,\n" +
+    "       or BLUEPRINT_APP_BIN=<that binary> to run node dist/index.js with snapshots from it.\n" +
+    "       (No implicit fallback to an installed /Applications/Blueprint.app.)");
+  process.exit(2);
+}
+if (ci >= 0 && !fs.existsSync(command)) { console.error(`smoke: no binary at ${command}`); process.exit(2); }
+if (process.env.BLUEPRINT_APP_BIN && !fs.existsSync(process.env.BLUEPRINT_APP_BIN)) { console.error(`smoke: BLUEPRINT_APP_BIN does not exist: ${process.env.BLUEPRINT_APP_BIN}`); process.exit(2); }
 const HOME = fs.mkdtempSync(path.join(os.tmpdir(), "blueprint-smoke-"));
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "blueprint-smoke-src-"));
 console.log(`server: ${[command, ...cmdArgs].join(" ")}\nstore: ${HOME}`);
@@ -156,6 +166,49 @@ try {
   ok(badPos.r.isError && /`position` must be \{"x": number, "y": number\}/.test(badPos.t) && !/invalid node id/.test(badPos.t), "bad position gets a human message; underscore id accepted");
   const gv3 = (await call("get_visual", ids)).j;
   ok(gv3.rev === revBefore && !gv3.nodes.some((n) => n.id === "ok-one"), `rejected atomically; rev unchanged (${revBefore})`);
+
+  // ---- visual v2: shapes, art on the part, arrangements, tidiness, illustration warning
+  const v2 = (await call("create_visual", { projectId: pid, systemId: sid, title: "Ring visual" })).j.visualId;
+  const ids2 = { projectId: pid, systemId: sid, visualId: v2 };
+  const ringOps = ["a", "b", "c", "d"].flatMap((x, i, all) => [
+    { op: "add_node", node: { id: x, kind: "card", shape: i % 2 ? "circle" : "pill", title: x.toUpperCase(), explanation: `Step ${x}.` } },
+    { op: "add_edge", edge: { id: `e-${x}`, source: x, target: all[(i + 1) % all.length], kind: "flow", explanation: "next" } }]);
+  ringOps.push({ op: "add_node", node: { id: "art-card", kind: "card", title: "Drawn", art: { svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>', size: "sm" }, explanation: "Has art." } });
+  const ring = await call("apply", { ...ids2, ops: ringOps, layout: { arrangement: "ring" } });
+  ok(ring.j?.ok && ring.j.tidiness && Array.isArray(ring.j.tidiness.defects), `apply returns tidiness (${ring.j?.tidiness?.defects.length} defects)`);
+  const gv4 = (await call("get_visual", ids2)).j;
+  ok(gv4.arrangement === "ring" && gv4.nodes.find((n) => n.id === "art-card").art.size === "sm" && gv4.tidiness, "arrangement persisted on the visual; art kept; get_visual returns tidiness");
+  ok(gv4.edges.filter((e) => ["e-a", "e-b"].includes(e.id)).every((e) => e.route.length > 4), "ring steps between offset members are drawn as curves");
+  const badArt = await call("apply", { ...ids2, ops: [{ op: "add_node", node: { id: "x1", kind: "note", title: "n", art: { svg: "<svg/>" }, explanation: "x" } }, { op: "add_node", node: { id: "x2", kind: "card", title: "c", art: { svg: "<svg/>", html: "<b>" }, explanation: "x" } }, { op: "add_node", node: { id: "x3", kind: "card", shape: "hexagon", explanation: "x" } }] });
+  ok(badArt.r.isError && /`art` only applies to kind 'card'/.test(badArt.t) && /exactly one of svg, html or asset/.test(badArt.t) && /`shape` must be one of/.test(badArt.t), "bad art/shape rejected with fixable messages");
+  const ill = await call("apply", { ...ids2, ops: [{ op: "add_node", node: { id: "pic2", kind: "visual", svg: "<svg/>", title: "Picture", explanation: "x" } }, { op: "add_edge", edge: { id: "ill", source: "pic2", target: "a", kind: "relates", label: "illustrates", explanation: "x" } }] });
+  ok(ill.j?.warnings.some((w) => /^illustration-node: 'pic2'/.test(w)), "a drawing joined to one card by relates is flagged (art belongs on the part)");
+
+  // ---- tidiness rules: tiers share columns, rows share heights, rings are true and their labels on the arc
+  ok(!ring.j.tidiness.defects.some((d) => /^ring-/.test(d)), "an auto-laid ring has no ring-off-arc / ring-unequal-angles defects");
+  const v3 = (await call("create_visual", { projectId: pid, systemId: sid, title: "Tiers" })).j.visualId;
+  const ids3 = { projectId: pid, systemId: sid, visualId: v3 };
+  const tierOps = (pos) => [
+    { op: "add_node", node: { id: "t1", kind: "group", groupKind: "layer", title: "Top", explanation: "x", ...(pos ? { position: { x: 0, y: 0 } } : {}) } },
+    { op: "add_node", node: { id: "t2", kind: "group", groupKind: "layer", title: "Bottom", explanation: "x", ...(pos ? { position: { x: 0, y: 300 } } : {}) } },
+    ...["a", "b", "c"].map((x, i) => ({ op: "add_node", node: { id: `u${x}`, kind: "card", parent: "t1", title: `Up ${x}`, ...(i === 1 ? { subtitle: "a much longer subtitle that wraps onto two lines" } : {}), explanation: "x", ...(pos ? { position: { x: 24 + i * 272, y: i === 1 ? 28 : 48 } } : {}) } })),
+    ...["a", "b", "c"].map((x, i) => ({ op: "add_node", node: { id: `d${x}`, kind: "card", shape: "pill", parent: "t2", title: `Down ${x}`, explanation: "x", ...(pos ? { position: { x: 60 + i * 200, y: 48 } } : {}) } })),
+    { op: "add_edge", edge: { id: "tt", source: "t1", target: "t2", kind: "flow", explanation: "x" } }];
+  const tiersAuto = await call("apply", { ...ids3, ops: tierOps(false) });
+  ok(tiersAuto.j?.ok && !tiersAuto.j.tidiness.defects.some((d) => /^row-/.test(d)), `auto layout: tier rows share columns and heights (${tiersAuto.j?.tidiness?.defects.join(" | ") || "0 defects"})`);
+  const v4 = (await call("create_visual", { projectId: pid, systemId: sid, title: "Tiers by hand" })).j.visualId;
+  const tiersHand = await call("apply", { projectId: pid, systemId: sid, visualId: v4, ops: tierOps(true) });
+  const hd = tiersHand.j?.tidiness?.defects ?? [];
+  ok(hd.some((d) => /^row-misaligned: .*'t2'/.test(d)) && hd.some((d) => /^row-uneven-height: .*'t1'/.test(d)), `hand-placed tiers off the column grid / with uneven heights are flagged (${hd.join(" | ")})`);
+  const v5 = (await call("create_visual", { projectId: pid, systemId: sid, title: "Ring by hand" })).j.visualId;
+  const at = [[0, -200], [260, 0], [0, 230], [-200, 40]];
+  const ids5 = { projectId: pid, systemId: sid, visualId: v5 };
+  await call("apply", { ...ids5, layout: { arrangement: "ring" }, ops: ["p", "q", "r", "s"].flatMap((x, i, all) => [
+    { op: "add_node", node: { id: x, kind: "card", shape: "pill", title: x, explanation: "x" } },
+    { op: "add_edge", edge: { id: `r-${x}`, source: x, target: all[(i + 1) % 4], kind: "flow", explanation: "x" } }]) });
+  const ringHand = await call("apply", { ...ids5, ops: ["p", "q", "r", "s"].map((x, i) => ({ op: "update_node", id: x, patch: { position: { x: at[i][0], y: at[i][1] } } })) });
+  const rd = ringHand.j?.tidiness?.defects ?? [];
+  ok(rd.some((d) => /^ring-off-arc:/.test(d)) || rd.some((d) => /^ring-unequal-angles:/.test(d)), `a lopsided hand-placed ring is flagged (${rd.filter((d) => /^ring-/.test(d)).length} ring defects)`);
 
   const sr = await call("search", { query: "quokka" });
   ok(sr.j.hits.some((h) => h.type === "node" && h.nodeId === "alpha" && h.field === "explanation"), "search finds node by a word in its explanation");

@@ -3,7 +3,7 @@
 import type { BpEdge, BpNode, Visual } from "./types";
 import type { BpRfNode } from "@/components/canvas/nodes";
 import type { BpRfEdge } from "@/components/canvas/edges";
-import { sizeOf, absoluteBoxes, routeEdges, labelSpot, labelSize, labelObstacles, type LNode, type LEdge, type XY, type Box } from "./layout";
+import { sizeOf, absoluteBoxes, routeEdges, labelSpot, labelBox, labelObstacles, type LNode, type LEdge, type LayoutOpts, type XY, type Box } from "./layout";
 
 export interface DocContent {
   nodes: BpNode[];
@@ -101,7 +101,7 @@ export function liveNodes(docNodes: BpNode[], rfNodes: BpRfNode[]): LNode[] {
 
 /** Attach a route and label spot to every edge. A stored route is used while both its ends still sit on their nodes;
  *  otherwise (node dragged, resized, new edge) the edge is re-routed live with the same router the MCP server uses. */
-export function withRoutes(edges: BpRfEdge[], docNodes: BpNode[], rfNodes: BpRfNode[]): BpRfEdge[] {
+export function withRoutes(edges: BpRfEdge[], docNodes: BpNode[], rfNodes: BpRfNode[], opts: LayoutOpts = {}): BpRfEdge[] {
   const live = liveNodes(docNodes, rfNodes);
   const boxes = absoluteBoxes(live);
   const stale = new Set<string>();
@@ -110,21 +110,24 @@ export function withRoutes(edges: BpRfEdge[], docNodes: BpNode[], rfNodes: BpRfN
     if (!s || !t) continue;
     if (!r || r.length < 2 || !onBorder(r[0], s) || !onBorder(r[r.length - 1], t)) stale.add(e.id);
   }
-  const fresh = stale.size ? routeEdges(live, edges.map((e) => e.data!.edge as unknown as LEdge), stale) : new Map<string, XY[]>();
+  const fresh = stale.size ? routeEdges(live, edges.map((e) => e.data!.edge as unknown as LEdge), stale, opts) : new Map<string, XY[]>();
   const avoid = labelObstacles(live);
+  const routeOf = (e: BpRfEdge) => fresh.get(e.id) ?? (stale.has(e.id) ? undefined : e.data?.edge.route);
+  const all = edges.map((e) => ({ id: e.id, r: routeOf(e) }));
   return edges.map((e) => {
-    const route = fresh.get(e.id) ?? (stale.has(e.id) ? undefined : e.data?.edge.route);
-    const ls = e.data ? labelSize(e.data.edge as unknown as LEdge) : null;
-    const labelAt = route && ls ? labelSpot(route, ls, avoid) : undefined;
-    // Later labels keep clear of earlier ones (same order and rule as the MCP server's diagnose()).
+    const route = routeOf(e);
+    const le = e.data?.edge as unknown as LEdge | undefined;
+    const labelAt = route && route.length > 1 && le && labelBox(le) ? labelSpot(route, le, avoid, all.filter((o) => o.id !== e.id && o.r).map((o) => o.r!)) : undefined;
+    // Later labels keep clear of earlier ones (same order and rule as the MCP server's placeLabels()).
+    const ls = labelAt && le ? labelBox(le, labelAt.vertical) : null;
     if (labelAt && ls) avoid.push({ x: labelAt.x - ls.w / 2, y: labelAt.y - ls.h / 2, w: ls.w, h: ls.h });
     return { ...e, data: { ...e.data!, route, labelAt } };
   });
 }
 
 /** Routes for every edge, from the saved geometry (persisted on the edge as `route`). */
-export function computeRoutes(nodes: BpNode[], edges: BpEdge[]): BpEdge[] {
-  const routes = routeEdges(nodes as unknown as LNode[], edges as unknown as LEdge[]);
+export function computeRoutes(nodes: BpNode[], edges: BpEdge[], opts: LayoutOpts = {}): BpEdge[] {
+  const routes = routeEdges(nodes as unknown as LNode[], edges as unknown as LEdge[], undefined, opts);
   return edges.map((e) => { const r = routes.get(e.id); const o = { ...e }; if (r) o.route = r; else delete o.route; return o; });
 }
 

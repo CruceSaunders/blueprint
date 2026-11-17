@@ -1,6 +1,6 @@
 // electron-builder configuration. Builds UNSIGNED (ad-hoc) by default so anyone can build from source.
 // Release signing is opt-in through environment variables only (nothing identity-specific is committed):
-//   BLUEPRINT_SIGN_IDENTITY  e.g. "Developer ID Application: Example Inc. (TEAMID1234)"
+//   BLUEPRINT_SIGN_IDENTITY  e.g. "Example Inc. (TEAMID1234)" (no "Developer ID Application: " prefix; electron-builder adds it)
 //   APPLE_KEYCHAIN_PROFILE   a `xcrun notarytool store-credentials` profile name; when set, the app is notarized and stapled
 const identity = process.env.BLUEPRINT_SIGN_IDENTITY || null;
 

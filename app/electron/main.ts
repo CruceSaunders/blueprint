@@ -343,14 +343,15 @@ function registerIpc() {
   ipcMain.handle("root", () => tildeHome(store.ROOT));
   ipcMain.handle("connectState", () => ({
     firstRun: !HEADLESS && !fs.existsSync(promptedFlag()),
-    tools: connectTools.tools(os.homedir()).map((t) => ({ id: t.id, name: t.name, detected: t.detected, evidence: t.evidence })),
+    tools: connectTools.tools(os.homedir()).map((t) => ({ id: t.id, name: t.name, detected: t.detected, evidence: t.evidence, connected: connectTools.registered(t) })),
   }));
   ipcMain.handle("connectDismiss", () => {
     try { fs.mkdirSync(path.dirname(promptedFlag()), { recursive: true }); fs.writeFileSync(promptedFlag(), new Date().toISOString() + "\n"); } catch { /* best effort */ }
     return true;
   });
   ipcMain.handle("connectRun", (_e, ids: unknown) => {
-    if (HEADLESS) return { ok: false, lines: ["Not available in this mode."] };
+    // ui-test (dev builds only) may connect: it runs with a throwaway HOME, so this never touches real configs.
+    if (HEADLESS && !(uiTestArg !== undefined && process.env.BLUEPRINT_TEST === "1")) return { ok: false, lines: ["Not available in this mode."] };
     const picked = Array.isArray(ids) ? ids.filter((x): x is connectTools.ToolId => connectTools.TOOL_IDS.includes(x)) : [];
     if (!picked.length) return { ok: false, lines: ["Pick at least one tool."] };
     try {
@@ -510,7 +511,7 @@ function runSnapshot() {
     win.webContents.on("render-process-gone", (_e, d) => process.stderr.write(`[main] renderer gone ${d.reason}\n`));
   }
   ipcMain.on("snapshot-ready", (_e, info: { aspect: number }) => {
-    const aspect = Math.max(0.3, Math.min(2.5, info?.aspect || 0.625));
+    const aspect = Math.max(0.12, Math.min(2.5, info?.aspect || 0.625)); // wide maps stay wide: padding stays even
     win.setContentSize(width, Math.round(width * aspect), false);
     setTimeout(() => win.webContents.send("snapshot-fit"), 60);
   });

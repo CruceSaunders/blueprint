@@ -3,10 +3,10 @@ import { BaseEdge, EdgeLabelRenderer, getBezierPath, type Edge, type EdgeProps }
 import type { BpEdge, EdgeKind } from "@/lib/types";
 import { EDGE_INFO } from "@/lib/vocab";
 
-export type BpRfEdge = Edge<{ edge: BpEdge; route?: { x: number; y: number }[]; labelAt?: { x: number; y: number } }>;
+export type BpRfEdge = Edge<{ edge: BpEdge; route?: { x: number; y: number }[]; labelAt?: { x: number; y: number; vertical?: boolean } }>;
 
 /** SVG path through orthogonal bend points with rounded corners. */
-export function roundedPath(pts: { x: number; y: number }[], radius = 10): string {
+export function roundedPath(pts: { x: number; y: number }[], radius = 8): string {
   if (pts.length < 2) return "";
   let d = `M${pts[0].x},${pts[0].y}`;
   for (let i = 1; i < pts.length - 1; i++) {
@@ -129,8 +129,9 @@ export const RelationshipEdge = memo(function RelationshipEdge(props: EdgeProps<
       {(st.badge || e?.label) && (
         <EdgeLabelRenderer>
           <div
-            className="nodrag nopan pointer-events-auto absolute flex items-center gap-1.5 whitespace-nowrap"
-            style={{ transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)` }}
+            className={`nodrag nopan pointer-events-auto absolute flex items-center whitespace-nowrap rounded-full ${data?.labelAt?.vertical ? "flex-col gap-1" : "gap-1.5"}`}
+            data-testid="edge-label"
+            style={{ transform: `translate(-50%, -50%) translate(${lx}px, ${ly}px)`, background: st.badge && e?.label ? "var(--canvas)" : undefined }}
           >
             {st.badge && <Badge text={st.badge} color={color} />}
             {e?.label && (

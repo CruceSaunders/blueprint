@@ -1,246 +1,229 @@
 {
- "projectId": "coffee-shop",
- "systemId": "how-the-shop-makes-money",
- "visualId": "overview",
- "layout": {
-  "direction": "RIGHT"
- },
- "ops": [
-  {
-   "op": "add_node",
-   "node": {
-    "id": "customers",
-    "kind": "card",
-    "title": "Customers",
-    "icon": "users",
-    "explanation": "People who walk in. More of them means more cups sold."
-   }
+  "projectId": "coffee-shop",
+  "systemId": "how-the-shop-makes-money",
+  "visualId": "overview",
+  "layout": {
+    "direction": "RIGHT"
   },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "queue",
-    "kind": "card",
-    "title": "Long queue",
-    "icon": "clock",
-    "tone": "warn",
-    "explanation": "When the line is too long, some people leave without buying."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "cups",
-    "kind": "card",
-    "title": "Cups sold",
-    "subtitle": "Per day",
-    "icon": "coffee",
-    "explanation": "How many drinks the shop sells in a day."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "price",
-    "kind": "card",
-    "title": "Price per cup",
-    "icon": "tag",
-    "explanation": "What one drink costs the customer."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "times",
-    "kind": "operator",
-    "operator": "×",
-    "explanation": "Cups sold multiplied by the price per cup."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "eq",
-    "kind": "operator",
-    "operator": "=",
-    "explanation": "The result of the multiplication."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "revenue",
-    "kind": "card",
-    "title": "Revenue",
-    "icon": "banknote",
-    "explanation": "All the money that comes in from sales."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "costs",
-    "kind": "group",
-    "groupKind": "group",
-    "title": "Costs",
-    "explanation": "What the shop pays out to keep running."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "beans",
-    "kind": "card",
-    "parent": "costs",
-    "title": "Beans and milk",
-    "icon": "package",
-    "explanation": "Ingredients. This cost rises with every cup sold."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "rent",
-    "kind": "card",
-    "parent": "costs",
-    "title": "Rent and staff",
-    "icon": "building",
-    "explanation": "Fixed costs. The shop pays them however many cups it sells."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "profit",
-    "kind": "card",
-    "title": "Profit",
-    "icon": "piggy-bank",
-    "tone": "good",
-    "weight": "lg",
-    "explanation": "What is left of revenue after all costs are paid."
-   }
-  },
-  {
-   "op": "add_node",
-   "node": {
-    "id": "cup",
-    "kind": "visual",
-    "title": "One cup",
-    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 240 140\"><path d=\"M70 40 H160 L152 118 Q151 126 143 126 H87 Q79 126 78 118 Z\" fill=\"#f59e0b\" fill-opacity=\".3\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linejoin=\"round\"/><path d=\"M160 56 Q188 56 186 78 Q184 98 156 98\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"/><path d=\"M74 52 H156\" stroke=\"#f59e0b\" stroke-width=\"3\"/><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-opacity=\".6\"><path d=\"M96 32 Q90 24 96 16 Q102 8 96 2\"/><path d=\"M116 32 Q110 24 116 16 Q122 8 116 2\"/><path d=\"M136 32 Q130 24 136 16 Q142 8 136 2\"/></g></svg>",
-    "explanation": "Each cup sold is one unit of the business: it brings in its price and uses up beans and milk."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-customers-cups",
-    "source": "customers",
-    "target": "cups",
-    "kind": "flow",
-    "label": "buy",
-    "explanation": "Customers buy drinks; each purchase is a cup sold."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-queue-cups",
-    "source": "queue",
-    "target": "cups",
-    "kind": "blocks",
-    "explanation": "A long queue stops some sales: people give up and leave."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-price-customers",
-    "source": "price",
-    "target": "customers",
-    "kind": "decreases",
-    "explanation": "Raise the price too far and fewer people come in."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-cups-times",
-    "source": "cups",
-    "target": "times",
-    "kind": "flow",
-    "explanation": "Cups sold go into the sum."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-price-times",
-    "source": "price",
-    "target": "times",
-    "kind": "flow",
-    "explanation": "The price goes into the sum."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-times-eq",
-    "source": "times",
-    "target": "eq",
-    "kind": "flow",
-    "explanation": "Cups sold times price gives the result."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-eq-revenue",
-    "source": "eq",
-    "target": "revenue",
-    "kind": "becomes",
-    "explanation": "Cups sold times price becomes the day's revenue."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-revenue-profit",
-    "source": "revenue",
-    "target": "profit",
-    "kind": "increases",
-    "explanation": "More revenue means more profit, if costs stay the same."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-costs-profit",
-    "source": "costs",
-    "target": "profit",
-    "kind": "decreases",
-    "explanation": "Every cost paid comes out of profit."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-cups-beans",
-    "source": "cups",
-    "target": "beans",
-    "kind": "requires",
-    "explanation": "Every cup needs beans and milk, so this cost grows with sales."
-   }
-  },
-  {
-   "op": "add_edge",
-   "edge": {
-    "id": "e-cup-cups",
-    "source": "cup",
-    "target": "cups",
-    "kind": "relates",
-    "label": "one of these",
-    "explanation": "The drawing shows a single cup, the unit being counted."
-   }
-  }
- ]
+  "ops": [
+    {
+      "op": "add_node",
+      "node": {
+        "id": "customers",
+        "kind": "card",
+        "title": "Customers",
+        "icon": "users",
+        "explanation": "People who walk in. More of them means more cups sold."
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "queue",
+        "kind": "card",
+        "title": "Long queue",
+        "icon": "clock",
+        "tone": "warn",
+        "explanation": "When the line is too long, some people leave without buying."
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "cups",
+        "kind": "card",
+        "title": "Cups sold",
+        "subtitle": "Per day",
+        "explanation": "How many drinks the shop sells in a day. Each cup sold is one unit of the business: it brings in its price and uses up beans and milk.",
+        "art": {
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 240 140\"><path d=\"M70 40 H160 L152 118 Q151 126 143 126 H87 Q79 126 78 118 Z\" fill=\"#f59e0b\" fill-opacity=\".3\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linejoin=\"round\"/><path d=\"M160 56 Q188 56 186 78 Q184 98 156 98\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"/><path d=\"M74 52 H156\" stroke=\"#f59e0b\" stroke-width=\"3\"/><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-opacity=\".6\"><path d=\"M96 32 Q90 24 96 16 Q102 8 96 2\"/><path d=\"M116 32 Q110 24 116 16 Q122 8 116 2\"/><path d=\"M136 32 Q130 24 136 16 Q142 8 136 2\"/></g></svg>",
+          "size": "sm"
+        }
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "price",
+        "kind": "card",
+        "title": "Price per cup",
+        "icon": "tag",
+        "explanation": "What one drink costs the customer."
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "times",
+        "kind": "operator",
+        "operator": "×",
+        "explanation": "Cups sold multiplied by the price per cup."
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "eq",
+        "kind": "operator",
+        "operator": "=",
+        "explanation": "The result of the multiplication."
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "revenue",
+        "kind": "card",
+        "title": "Revenue",
+        "icon": "banknote",
+        "explanation": "All the money that comes in from sales."
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "costs",
+        "kind": "group",
+        "groupKind": "group",
+        "title": "Costs",
+        "explanation": "What the shop pays out to keep running.",
+        "arrangement": "row"
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "beans",
+        "kind": "card",
+        "parent": "costs",
+        "title": "Beans and milk",
+        "icon": "package",
+        "explanation": "Ingredients. This cost rises with every cup sold."
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "rent",
+        "kind": "card",
+        "parent": "costs",
+        "title": "Rent and staff",
+        "icon": "building",
+        "explanation": "Fixed costs. The shop pays them however many cups it sells."
+      }
+    },
+    {
+      "op": "add_node",
+      "node": {
+        "id": "profit",
+        "kind": "card",
+        "title": "Profit",
+        "icon": "piggy-bank",
+        "tone": "good",
+        "weight": "lg",
+        "explanation": "What is left of revenue after all costs are paid."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-customers-cups",
+        "source": "customers",
+        "target": "cups",
+        "kind": "flow",
+        "label": "buy",
+        "explanation": "Customers buy drinks; each purchase is a cup sold."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-queue-cups",
+        "source": "queue",
+        "target": "cups",
+        "kind": "blocks",
+        "explanation": "A long queue stops some sales: people give up and leave."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-price-customers",
+        "source": "price",
+        "target": "customers",
+        "kind": "decreases",
+        "explanation": "Raise the price too far and fewer people come in."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-cups-times",
+        "source": "cups",
+        "target": "times",
+        "kind": "flow",
+        "explanation": "Cups sold go into the sum."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-price-times",
+        "source": "price",
+        "target": "times",
+        "kind": "flow",
+        "explanation": "The price goes into the sum."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-times-eq",
+        "source": "times",
+        "target": "eq",
+        "kind": "flow",
+        "explanation": "Cups sold times price gives the result."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-eq-revenue",
+        "source": "eq",
+        "target": "revenue",
+        "kind": "becomes",
+        "explanation": "Cups sold times price becomes the day's revenue."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-revenue-profit",
+        "source": "revenue",
+        "target": "profit",
+        "kind": "increases",
+        "explanation": "More revenue means more profit, if costs stay the same."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-costs-profit",
+        "source": "costs",
+        "target": "profit",
+        "kind": "decreases",
+        "explanation": "Every cost paid comes out of profit."
+      }
+    },
+    {
+      "op": "add_edge",
+      "edge": {
+        "id": "e-cups-beans",
+        "source": "cups",
+        "target": "beans",
+        "kind": "requires",
+        "explanation": "Every cup needs beans and milk, so this cost grows with sales."
+      }
+    }
+  ]
 }

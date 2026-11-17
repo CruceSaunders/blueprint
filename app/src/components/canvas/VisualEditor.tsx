@@ -4,18 +4,25 @@ import {
   applyNodeChanges, applyEdgeChanges, useReactFlow,
   type NodeChange, type EdgeChange, type Connection, type OnBeforeDelete,
 } from "@xyflow/react";
-import type { BpEdge, BpNode, NodeKind, Visual, VisualIds, TreeProject } from "@/lib/types";
+import type { Arrangement, BpEdge, BpNode, NodeKind, Shape, Treatment, Visual, VisualIds, TreeProject } from "@/lib/types";
+import { useCommands, type Command } from "@/lib/commands";
+import { ARRANGEMENT_ORDER, SHAPE_NAME, SHAPE_ORDER, TREATMENT_NAME, TREATMENT_ORDER } from "@/lib/look";
 import { api } from "@/lib/api";
 import { CanvasCtx, nodeTypes, type BpRfNode, type CanvasCtxValue } from "./nodes";
 import { EdgeMarkers, edgeTypes, type BpRfEdge } from "./edges";
 import { computeRoutes, descendants, fromRfNodes, toRfEdges, toRfNodes, withRoutes, type DocContent } from "@/lib/doc";
-import { arrange, sizeOf, type LayoutDirection, type LNode, type LEdge } from "@/lib/layout";
+import { arrange, sizeOf, type LayoutDirection, type LayoutOpts, type LNode, type LEdge } from "@/lib/layout";
 import { newId } from "@/lib/utils";
 import { AddToolbar } from "../AddToolbar";
 import { DetailPanel } from "../DetailPanel";
+import { FloatingDetail } from "../FloatingDetail";
 import { VisualHeader } from "../VisualHeader";
+import { EmptyVisualPrompt, promptTopic } from "../FirstRun";
+import { useShell } from "@/lib/shell";
+import { useFitAll, useInitialFit } from "@/lib/frame";
 
 type Meta = Omit<Visual, "nodes" | "edges">;
+const layoutOpts = (m: Meta | null): LayoutOpts => ({ arrangement: m?.arrangement, direction: m?.direction });
 
 const clean = <T extends object>(o: T): T => {
   const out = { ...o } as Record<string, unknown>;
@@ -53,6 +60,7 @@ export function VisualEditor(props: EditorProps) {
 
 function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
   const rf = useReactFlow<BpRfNode, BpRfEdge>();
+  const fitAll = useFitAll();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [missing, setMissing] = useState(false);
@@ -62,12 +70,25 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
   const metaRef = useRef<Meta | null>(null);
   const rev = useRef(0);
   const undoStack = useRef<DocContent[]>([]);
+  // The visual's own arrangement/direction travel with each undo step (a layout change edits both the cards and the meta).
+  const metaSnaps = useRef(new WeakMap<DocContent, Pick<Meta, "arrangement" | "direction">>());
+  const snapMeta = () => ({ arrangement: metaRef.current?.arrangement, direction: metaRef.current?.direction });
+  const restoreMeta = (c: DocContent) => {
+    const m = metaSnaps.current.get(c);
+    if (!m || !metaRef.current) return;
+    const next = { ...metaRef.current, ...m } as Meta;
+    if (m.arrangement === undefined) delete next.arrangement;
+    if (m.direction === undefined) delete next.direction;
+    metaRef.current = next;
+    setMeta(next);
+  };
   const redoStack = useRef<DocContent[]>([]);
   const saveTimer = useRef<number | null>(null);
   const resized = useRef(new Set<string>());
   const [geomTick, setGeomTick] = useState(0);
   // The detail panel opens only on a genuine click (pointer up within 4px of pointer down), never on drag/resize/connect.
-  const [detail, setDetail] = useState<{ type: "node" | "edge"; id: string } | null>(null);
+  const [detail, setDetail] = useState<{ type: "node" | "edge"; id: string; edit?: boolean } | null>(null);
+  const shell = useShell();
   const downAt = useRef<{ x: number; y: number } | null>(null);
   const isClick = (e: { clientX: number; clientY: number }) => !!downAt.current && Math.hypot(e.clientX - downAt.current.x, e.clientY - downAt.current.y) <= 4;
   const [, force] = useState(0);
@@ -113,6 +134,7 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
 
   const apply = useCallback((next: DocContent, opts: { record?: boolean; rebuild?: boolean } = {}) => {
     if (opts.record !== false) {
+      metaSnaps.current.set(content.current, snapMeta());
       undoStack.current.push(content.current);
       if (undoStack.current.length > 200) undoStack.current.shift();
       redoStack.current = [];
@@ -155,7 +177,7 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
     const nextNodes = fromRfNodes(nodes, content.current.nodes, resized.current);
     if (JSON.stringify(nextNodes) === JSON.stringify(content.current.nodes)) return;
     // moved/resized: every edge gets a fresh route from the saved geometry (stale routes are never kept)
-    apply({ nodes: nextNodes, edges: computeRoutes(nextNodes, content.current.edges) }, { rebuild: false });
+    apply({ nodes: nextNodes, edges: computeRoutes(nextNodes, content.current.edges, layoutOpts(metaRef.current)) }, { rebuild: false });
     setEdgesState((prev) => toRfEdges(content.current.edges, prev));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geomTick]);
@@ -169,9 +191,55 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
   }, []);
 
   // ---------- operations ----------
+  // Re-fit frames around `touched` (their ancestors), keep the other frames as they are, and re-route every line.
+  const refit = useCallback(async (ns: BpNode[], es: BpEdge[], touched: string[], extra: { replace?: Set<string>; relayout?: boolean; opts?: LayoutOpts } = {}) => {
+    const anc = new Set<string>();
+    const byId = new Map(ns.map((n) => [n.id, n]));
+    for (const t of touched) for (let p = byId.get(t)?.parent, i = 0; p && i < 50; p = byId.get(p)?.parent, i++) anc.add(p);
+    const keepGroupSize = new Set(ns.filter((n) => n.kind === "group" && !anc.has(n.id) && !touched.includes(n.id)).map((n) => n.id));
+    const out = await arrange(ns as unknown as LNode[], es as unknown as LEdge[], { ...(extra.opts ?? layoutOpts(metaRef.current)), keepGroupSize, replace: extra.replace, relayout: extra.relayout });
+    return { nodes: out.nodes as unknown as BpNode[], edges: out.edges as unknown as BpEdge[] };
+  }, []);
+
   const updateNode = useCallback((id: string, patch: Partial<BpNode>) => {
-    apply({ ...content.current, nodes: content.current.nodes.map((n) => (n.id === id ? clean({ ...n, ...patch }) : n)) });
-  }, [apply]);
+    const nodes2 = content.current.nodes.map((n) => (n.id === id ? clean({ ...n, ...patch }) : n));
+    // a new shape or drawing changes the card's size: re-fit its frames and re-route (still one undo step)
+    if ("shape" in patch || "art" in patch) void refit(nodes2, content.current.edges, [id]).then((r) => apply(r));
+    else apply({ ...content.current, nodes: nodes2 });
+  }, [apply, refit]);
+
+  /** Change a frame's arrangement or treatment: its children are re-placed (SPEC: patching a group re-places its children). */
+  const updateGroupLook = useCallback((ids2: string[], patch: Pick<BpNode, "arrangement" | "treatment">) => {
+    const set = new Set(ids2);
+    const ns = content.current.nodes.map((n) => (set.has(n.id) ? clean({ ...n, ...patch }) : n));
+    // re-place the children only: the frame itself keeps its spot and is re-fitted around them
+    const replace = new Set<string>();
+    for (const n of ns) if (n.parent && set.has(n.parent)) replace.add(n.id);
+    void refit(ns, content.current.edges, ids2, { replace }).then((r) => apply(r));
+  }, [apply, refit]);
+
+  /** The visual's own arrangement (everything at the top level) is stored on the visual; every card is re-placed. */
+  const setCanvasArrangement = useCallback((arrangement: Arrangement | undefined) => {
+    const opts = { ...layoutOpts(metaRef.current), arrangement };
+    void refit(content.current.nodes, content.current.edges, [], { relayout: true, opts }).then((r) => {
+      apply(r); // the undo step remembers the old arrangement; set the new one after
+      if (!metaRef.current) return;
+      const m = { ...metaRef.current, arrangement } as Meta;
+      if (arrangement === undefined) delete m.arrangement;
+      metaRef.current = m;
+      setMeta(m);
+      scheduleSave();
+      window.setTimeout(() => void fitAll({ pad: 0.08, duration: 300, maxZoom: 1.1 }), 80);
+    });
+  }, [apply, refit, fitAll, scheduleSave]);
+
+  /** Re-place everything with the current layout engine (explicit; never done on load). */
+  const tidyNew = useCallback(() => {
+    void refit(content.current.nodes, content.current.edges, [], { relayout: true }).then((r) => {
+      apply(r);
+      window.setTimeout(() => void fitAll({ pad: 0.08, duration: 300, maxZoom: 1.1 }), 80);
+    });
+  }, [apply, refit, fitAll]);
   const updateEdge = useCallback((id: string, patch: Partial<BpEdge>) => {
     apply({ ...content.current, edges: content.current.edges.map((e) => (e.id === id ? clean({ ...e, ...patch }) : e)) });
   }, [apply]);
@@ -198,7 +266,7 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
     setNodesState((nds) => nds.map((n) => ({ ...n, selected: false })));
     apply({ ...content.current, edges: [...content.current.edges, edge] });
     setEdgesState((eds) => eds.map((e) => ({ ...e, selected: e.id === edge.id })));
-    setDetail({ type: "edge", id: edge.id }); // a finished connection opens its kind picker
+    setDetail({ type: "edge", id: edge.id, edit: true }); // a finished connection opens its kind picker
   }, [apply]);
 
   const addNode = useCallback((kind: NodeKind) => {
@@ -257,22 +325,28 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
   }, [nodes, apply]);
 
   const tidy = useCallback(async (direction: LayoutDirection) => {
-    const out = await arrange(content.current.nodes as unknown as LNode[], content.current.edges as unknown as LEdge[], { direction, relayout: true });
+    // Tidy keeps the visual's own arrangement; the menu's direction becomes the visual's direction.
+    const out = await arrange(content.current.nodes as unknown as LNode[], content.current.edges as unknown as LEdge[], { ...layoutOpts(metaRef.current), direction, relayout: true });
+    if (metaRef.current && metaRef.current.direction !== direction) { metaRef.current = { ...metaRef.current, direction }; setMeta(metaRef.current); }
     apply({ nodes: out.nodes as unknown as BpNode[], edges: out.edges as unknown as BpEdge[] });
-    window.setTimeout(() => void rf.fitView({ padding: 0.12, duration: 300 }), 80);
-  }, [apply, rf]);
+    window.setTimeout(() => void fitAll({ pad: 0.08, duration: 300, maxZoom: 1.1 }), 80);
+  }, [apply, fitAll]);
 
   const undo = useCallback(() => {
     const prev = undoStack.current.pop();
     if (!prev) return;
+    metaSnaps.current.set(content.current, snapMeta());
     redoStack.current.push(content.current);
     apply(prev, { record: false });
+    restoreMeta(prev);
   }, [apply]);
   const redo = useCallback(() => {
     const next = redoStack.current.pop();
     if (!next) return;
+    metaSnaps.current.set(content.current, snapMeta());
     undoStack.current.push(content.current);
     apply(next, { record: false });
+    restoreMeta(next);
   }, [apply]);
 
   // menu + keyboard
@@ -314,6 +388,48 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
     void t;
   }, [focusNodeId, meta, rf]);
 
+  // ---------- look + migration commands (⌘K), applied to the selection (a frame's arrangement, else the visual's) ----------
+  // Two or more selected (Shift-click, box select): the card closes cleanly and the Group control appears; selection stays.
+  useEffect(() => { if (detail && selectedNodes.length >= 2) setDetail(null); }, [detail, selectedNodes.length]);
+  const selIds = new Set(selectedNodes.map((n) => n.id));
+  const selCards = content.current.nodes.filter((n) => selIds.has(n.id) && n.kind === "card");
+  const selGroups = content.current.nodes.filter((n) => selIds.has(n.id) && n.kind === "group");
+  /** A selected separate drawing joined by exactly one "relates" line to exactly one card: it can become that card's art. */
+  const artOffer = (() => {
+    const sel = content.current.nodes.filter((n) => selIds.has(n.id));
+    const d = sel.length === 1 ? sel[0] : undefined;
+    if (!d || d.kind !== "visual" || !(d.svg || d.html)) return null;
+    const touching = content.current.edges.filter((e) => e.source === d.id || e.target === d.id);
+    if (touching.length !== 1 || touching[0].kind !== "relates") return null;
+    const card = content.current.nodes.find((n) => n.id === (touching[0].source === d.id ? touching[0].target : touching[0].source));
+    if (!card || card.kind !== "card" || card.art) return null;
+    return { drawing: d, edge: touching[0], card };
+  })();
+  const makeArt = useCallback(() => {
+    const o = artOffer;
+    if (!o) return;
+    const art = clean({ svg: o.drawing.svg, html: o.drawing.svg ? undefined : o.drawing.html, size: "md" as const });
+    const ns = content.current.nodes.filter((n) => n.id !== o.drawing.id).map((n) => (n.id === o.card.id ? clean({ ...n, art }) : n));
+    const es = content.current.edges.filter((e) => e.id !== o.edge.id);
+    setDetail(null);
+    void refit(ns, es, [o.card.id]).then((r) => apply(r));
+  }, [artOffer, refit, apply]); // eslint-disable-line react-hooks/exhaustive-deps
+  const patchCards = (patch: Partial<BpNode>) => {
+    const set = new Set(selCards.map((n) => n.id));
+    const ns = content.current.nodes.map((n) => (set.has(n.id) ? clean({ ...n, ...patch }) : n));
+    void refit(ns, content.current.edges, [...set]).then((r) => apply(r));
+  };
+  const arrangeSelection = (a: Arrangement) => (selGroups.length ? updateGroupLook(selGroups.map((g) => g.id), { arrangement: a }) : setCanvasArrangement(a));
+  const lookCommands: Command[] = [
+    ...SHAPE_ORDER.map((sh): Command => ({ id: `shape-${sh}`, label: `Shape: ${SHAPE_NAME[sh]}`, group: "Edit", disabled: !selCards.length, run: () => patchCards({ shape: sh === "card" ? undefined : (sh as Shape) }) })),
+    { id: "remove-art", label: "Remove art", group: "Edit", disabled: !selCards.some((n) => n.art), run: () => patchCards({ art: undefined }) },
+    { id: "make-art", label: "Make this the card's art", group: "Edit", disabled: !artOffer, run: makeArt },
+    ...ARRANGEMENT_ORDER.map((a): Command => ({ id: `arrange-${a}`, label: `Arrange as ${a === "stack" ? "layers" : a === "hub" ? "hub and spokes" : a}`, group: "Arrange", disabled: !content.current.nodes.length, run: () => arrangeSelection(a) })),
+    ...TREATMENT_ORDER.map((t): Command => ({ id: `treatment-${t}`, label: `Group style: ${TREATMENT_NAME[t]}`, group: "Edit", disabled: !selGroups.length, run: () => updateGroupLook(selGroups.map((g) => g.id), { treatment: t as Treatment }) })),
+    { id: "tidy-new", label: "Tidy with new layout", group: "Arrange", disabled: !content.current.nodes.length, run: tidyNew },
+  ];
+  useCommands("look", lookCommands);
+
   const ctx: CanvasCtxValue = useMemo(() => ({
     projectId: ids.projectId,
     readOnly: false,
@@ -324,7 +440,8 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
     },
   }), [ids.projectId, updateNode]);
 
-  const displayEdges = useMemo(() => withRoutes(edges, content.current.nodes, nodes), [edges, nodes]);
+  const displayEdges = useMemo(() => withRoutes(edges, content.current.nodes, nodes, layoutOpts(metaRef.current)), [edges, nodes]);
+  useInitialFit(!!meta && !(meta.viewport?.zoom && !(meta.viewport.x === 0 && meta.viewport.y === 0 && meta.viewport.zoom === 1)), { pad: 0.08, maxZoom: 1.1 });
   const project = tree.find((p) => p.id === ids.projectId);
   const system = project?.systems.find((s) => s.id === ids.systemId);
 
@@ -332,9 +449,16 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
     return <div className="flex flex-1 items-center justify-center text-[13px] text-muted-foreground">This visual no longer exists. Pick another one on the left.</div>;
   }
 
+  const closeDetail = () => {
+    setDetail(null);
+    setNodesState((nds) => nds.map((n) => ({ ...n, selected: false })));
+    setEdgesState((eds) => eds.map((e) => ({ ...e, selected: false })));
+  };
   const defaultVp = meta && !(meta.viewport?.x === 0 && meta.viewport?.y === 0 && meta.viewport?.zoom === 1) && meta.viewport?.zoom ? meta.viewport : undefined;
   const singleNode = detail?.type === "node" ? content.current.nodes.find((n) => n.id === detail.id) : undefined;
   const singleEdge = detail?.type === "edge" ? content.current.edges.find((e) => e.id === detail.id) : undefined;
+
+  const neighbors = singleNode ? [...new Set(content.current.edges.filter((e) => e.source === singleNode.id || e.target === singleNode.id).map((e) => (e.source === singleNode.id ? e.target : e.source)))] : undefined;
 
   return (
     <div className="flex min-w-0 flex-1">
@@ -350,6 +474,8 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
           onUndo={undo}
           onRedo={redo}
           onTidy={tidy}
+          arrangement={meta?.arrangement}
+          onArrange={setCanvasArrangement}
           hasNodes={content.current.nodes.length > 0}
         />
         <div ref={wrapRef} className="relative min-h-0 flex-1" data-testid="canvas" onPointerDownCapture={(e) => { downAt.current = { x: e.clientX, y: e.clientY }; }}>
@@ -364,7 +490,7 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                onNodeClick={(e, n) => { if (isClick(e)) setDetail({ type: "node", id: n.id }); }}
+                onNodeClick={(e, n) => { if (isClick(e) && !e.shiftKey && !e.metaKey) setDetail({ type: "node", id: n.id }); }}
                 onEdgeClick={(e, ed) => { if (isClick(e)) setDetail({ type: "edge", id: ed.id }); }}
                 onPaneClick={(e) => { if (isClick(e)) setDetail(null); }}
                 onBeforeDelete={onBeforeDelete}
@@ -373,8 +499,6 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
                 deleteKeyCode={["Backspace", "Delete"]}
                 multiSelectionKeyCode={["Meta", "Shift"]}
                 defaultViewport={defaultVp}
-                fitView={!defaultVp}
-                fitViewOptions={{ padding: 0.15, maxZoom: 1.1 }}
                 minZoom={0.1}
                 maxZoom={3}
                 snapToGrid
@@ -384,44 +508,39 @@ function EditorInner({ ids, tree, focusNodeId, onNotice }: EditorProps) {
                 onlyRenderVisibleElements={false}
               >
                 <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="var(--canvas-dot)" />
-                <Controls showInteractive={false} position="bottom-left" />
-                <MiniMap pannable zoomable position="bottom-right" maskColor="color-mix(in srgb, var(--background) 70%, transparent)" nodeColor="var(--muted-foreground)" nodeBorderRadius={6} style={{ width: 160, height: 104, marginBottom: 72 }} />
+                {content.current.nodes.length > 0 && <Controls showInteractive={false} position="bottom-right" orientation="horizontal" className="bp-controls" />}
+                {shell.showMap && <MiniMap pannable zoomable position="bottom-right" maskColor="color-mix(in srgb, var(--background) 70%, transparent)" nodeColor="var(--muted-foreground)" nodeBorderRadius={6} style={{ width: 160, height: 104, marginBottom: 56 }} />}
               </ReactFlow>
-              {content.current.nodes.length === 0 && (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div className="max-w-sm text-center">
-                    <div className="text-[15px] font-medium">This canvas is empty</div>
-                    <div className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">Add a card, drawing or note from the bar below, or ask your AI to visualize this system.</div>
-                  </div>
-                </div>
-              )}
+              {content.current.nodes.length === 0 && <EmptyVisualPrompt topic={promptTopic(project?.title, system?.title)} />}
               <AddToolbar
                 onAdd={addNode}
-                canGroup={selectedNodes.length >= 1}
+                canGroup={selectedNodes.length >= 2}
                 canUngroup={selectedNodes.some((n) => n.type === "group")}
                 onGroup={group}
                 onUngroup={ungroup}
               />
             </CanvasCtx.Provider>
           )}
+          {(singleNode || singleEdge) && detail && (
+            <FloatingDetail container={wrapRef} type={detail.type} id={detail.id} ends={singleEdge ? [singleEdge.source, singleEdge.target] : undefined} neighbors={neighbors} onClose={closeDetail}>
+              <DetailPanel
+                key={JSON.stringify(singleNode ?? singleEdge)}
+                node={singleNode}
+                edge={singleEdge}
+                nodes={content.current.nodes}
+                onNode={updateNode}
+                onEdge={updateEdge}
+                onGroupLook={(gid, patch) => updateGroupLook([gid], patch)}
+                makeArt={artOffer && artOffer.drawing.id === singleNode?.id ? { cardTitle: artOffer.card.title || artOffer.card.id, run: makeArt } : undefined}
+                onDelete={() => deleteIds(singleNode ? [singleNode.id] : [], singleEdge ? [singleEdge.id] : [])}
+                editing={!!detail.edit}
+                onEditing={(edit) => setDetail((d) => (d ? { ...d, edit } : d))}
+                onClose={closeDetail}
+              />
+            </FloatingDetail>
+          )}
         </div>
       </div>
-      {(singleNode || singleEdge) && (
-        <DetailPanel
-          key={JSON.stringify(singleNode ?? singleEdge)}
-          node={singleNode}
-          edge={singleEdge}
-          nodes={content.current.nodes}
-          onNode={updateNode}
-          onEdge={updateEdge}
-          onDelete={() => deleteIds(singleNode ? [singleNode.id] : [], singleEdge ? [singleEdge.id] : [])}
-          onClose={() => {
-            setDetail(null);
-            setNodesState((nds) => nds.map((n) => ({ ...n, selected: false })));
-            setEdgesState((eds) => eds.map((e) => ({ ...e, selected: false })));
-          }}
-        />
-      )}
     </div>
   );
 }

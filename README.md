@@ -7,6 +7,22 @@ and opens it for you. Everything stays on your Mac as plain JSON files.
 
 ![A Blueprint visual](docs/screenshot.png)
 
+## What's new in 0.2.0
+
+- **A new layout engine.** Maps are laid out symmetrically and deterministically: tiers share one column grid,
+  rows share one height, rings are true circles, and lines route around cards with room for their labels.
+  Every write reports a tidiness check (overlaps, crossings, misaligned rows, nodes off a ring) so the AI fixes
+  layout problems before you see them.
+- **Shapes, on-card drawings and arrangements.** A card can be a card, pill, circle, diamond or plain text and
+  can carry its own small drawing. A frame (or the whole visual) can be arranged as a flow, stack, row, column,
+  ring, hub, tree or grid, and drawn as a band, tint, frame or bracket.
+- **A simpler app.** Click anything to see what it means in a small card placed in empty space beside it; one
+  **+** adds things; **⌘K** finds and runs everything; first launch is three steps.
+- **Older visuals** open as they are, with the new frame styles. Nothing is rewritten until you ask:
+  **⌘K > Tidy with new layout** re-places a whole visual, and **Make this the card's art** moves a separate drawing
+  onto the card it belongs to.
+- `Blueprint --mcp` now exits as soon as the AI session that started it ends.
+
 ## Install (DMG)
 
 1. Download `Blueprint.dmg` from the latest release (Apple silicon; signed and notarized).
@@ -37,7 +53,20 @@ In your AI tool:
 
 Or just ask it to "map this in Blueprint". The assistant reads Blueprint's guide (and a method topic such as
 `system-map`, `process-flow`, `feedback-map` or `options-compare`), writes the visual, checks a rendered
-snapshot, and opens the app at it in the background. You can then drag, edit, connect, group and tidy by hand.
+snapshot, and opens the app at it in the background. A new visual opens by itself as soon as it lands.
+
+In the app:
+
+- **First launch** shows three steps: connect your AI tools (one Connect button), type `/visualize …` in your
+  AI, and watch the visual appear. The "AI connected" pill in the top right opens the same steps later.
+- **Click a card or line** to see what it means. Press **Edit** in that panel to change its colour, status,
+  size, icon, shape or drawing, or a line's kind and direction. On a frame, Edit also sets how its contents are
+  arranged and how the frame is drawn. Dragging never opens the panel. Shift-click adds cards to the selection.
+- **+** at the bottom adds a card, drawing, image, symbol, note or frame. Select two or more cards and a
+  **Group** button appears next to it.
+- **⋯ (More)** holds tidy-up, the layout of the whole visual, notes, how to read lines and frames, the overview
+  map and appearance.
+- **⌘K** finds anything and runs any action. **⌘\\** hides the sidebar. **⌘Z** undoes.
 
 ## Where your data lives
 
@@ -72,14 +101,20 @@ git clone <this repo> blueprint && cd blueprint
 ```
 
 From-source builds are ad-hoc signed. To produce a signed and notarized release, set
-`BLUEPRINT_SIGN_IDENTITY` (a "Developer ID Application" identity name) and `APPLE_KEYCHAIN_PROFILE`
+`BLUEPRINT_SIGN_IDENTITY` (a Developer ID Application identity, without the "Developer ID Application: " prefix,
+e.g. `Example Inc. (TEAMID1234)`) and `APPLE_KEYCHAIN_PROFILE`
 (a `xcrun notarytool store-credentials` profile) before `cd app && npm run package`.
 
 The MCP server also runs straight from source with Node: `node mcp/dist/index.js`.
 
-Tests: `cd mcp && npm run smoke` (MCP over stdio), `cd app && npm run test:ui` (interaction test against the
-development build), `node app/scripts/network-test.mjs`, `node app/scripts/connect-test.mjs` and `node app/scripts/launch-test.mjs`
-(against the packaged app in `app/release/`).
+Tests:
+
+- `cd mcp && npm run smoke -- --cmd <path/to/Blueprint binary> --mcp` (MCP over stdio; the app must be named
+  explicitly, there is no fallback to an installed copy)
+- `cd app && npm run test:ui` (interaction test against the development build)
+- `cd mcp && npm run spec-check` (every field in SPEC.md exists in the schema, and the other way round)
+- against the packaged app in `app/release/`: `node app/scripts/network-test.mjs`, `node app/scripts/connect-test.mjs`,
+  `node app/scripts/launch-test.mjs` and `node app/scripts/mcp-exit-test.mjs`
 
 See [SPEC.md](SPEC.md) for the file format, tools and node/edge vocabulary.
 

@@ -36,6 +36,8 @@ visual.json:
 ```
 { id, title, description, rev, createdAt, updatedAt,
   viewport: { x, y, zoom },
+  arrangement?: Arrangement,           // the top-level canvas's arrangement (set via apply layout.arrangement)
+  direction?: "DOWN"|"RIGHT",          // main direction of flow/tree (set via apply layout.direction)
   nodes:  Node[], edges: Edge[] }
 ```
 
@@ -50,21 +52,32 @@ visual.json:
   weight?: "sm"|"md"|"lg",           // visual importance
   // kind-specific:
   operator?: "+"|"-"|"×"|"÷"|"="|"&"|"or"|"≠"|">"|"<",   // kind=operator
+  shape?: "card"|"pill"|"circle"|"diamond"|"plain",       // kind=card; default card
+  art?: { svg?: string, html?: string, asset?: string,     // kind=card: its own drawing, exactly one of svg/html/asset,
+          size?: "sm"|"md"|"lg" },                         //   drawn inside the card above the title (56/96/136 px tall)
   groupKind?: "group"|"layer"|"option"|"boundary",        // kind=group
+  arrangement?: Arrangement,                               // kind=group: how its children are placed
+  treatment?: "frame"|"band"|"tint"|"bracket"|"none",      // kind=group: how it is drawn
   svg?: string,                      // kind=visual: inline SVG markup (sanitised before render)
   html?: string,                     // kind=visual: self-contained HTML, rendered in a sandboxed iframe, no network
   asset?: string,                    // kind=image: file name inside the project's assets/
   caption?: string }
 ```
 Node kinds:
-- `card`     title + optional subtitle + optional icon. The default variable/thing.
-- `visual`   custom-drawn vector or coded visual (svg or html). Preferred over text when a picture says it better.
+- `card`     title + optional subtitle + optional icon. The default variable/thing. `shape` by meaning: `card` (a part),
+             `pill` (a step, state or tool), `circle` (an actor or loop stage), `diamond` (a decision), `plain` (no container:
+             art or icon with the label under it). `art` puts a drawing ON the card (the part is drawn as itself); it
+             replaces the icon. A part is never depicted by a separate visual/image node joined to it by `relates`.
+- `visual`   custom-drawn vector or coded visual (svg or html) that is its own element (a picture of the whole, a legend).
+             To depict one part, use that card's `art`.
 - `image`    raster or svg file from assets/.
 - `operator` small round symbol node: lets you say `A + B = C` literally.
 - `note`     free text sticky; not part of the logic.
 - `group`    a frame containing other nodes (children set `parent`). groupKind: `group` = belong together,
              `layer` = a tier/band in a stack, `option` = one of several alternatives, `boundary` = inside vs outside the system.
-             Groups nest.
+             Groups nest (depth 1 is the norm). `treatment` defaults: layer = `band` (hairline top/bottom, faint tint, small-caps
+             label), group = `tint` (soft region, no border), option/boundary = `frame` (outlined box with kind label);
+             `bracket` = a side rule with ticks; `none` = label only.
 
 ### Edge (relationship)
 ```
@@ -89,16 +102,43 @@ Relationship kinds (the whole vocabulary — do not invent others):
 The other relationship mediums are structural, not edges: operator nodes (combination, equations),
 groups (belonging, tiers, alternatives, boundaries), tone/state/weight (status and importance), notes.
 
-## Auto-layout
-Positions are optional when AI creates nodes. If any new node lacks `position`, the MCP server lays the
-visual out with elkjs (layered, direction chosen by the caller: `DOWN` default or `RIGHT`), respecting groups,
-and writes positions back. Existing hand-placed nodes keep their positions unless `layout.relayout: true`, which re-places
-every node. Nodes without `size` are sized from their text; groups grow to fit their children unless the group's `size`
-is given in the same batch. A patch value of `null` clears that field (e.g. `position: null` hands a node back to layout).
-Edge kinds that drive order (down the page, or right): `flow`, `becomes`, `increases`, `decreases`, `blocks`.
-`requires`, `equals`, `versus` and `relates` never reorder; a node linked only by them is placed beside its partner.
-Top-level `layer` groups stack in insertion order. Every edge gets a computed orthogonal `route`.
-The app has the same "Tidy" action (same elk options; `mcp/src/layout.ts` is copied 1:1 to `app/src/lib/layout.ts`).
+## Auto-layout (symmetry first; `mcp/src/layout.ts`, copied 1:1 to `app/src/lib/layout.ts`; no dependencies)
+Positions are optional when AI creates nodes. If any new node lacks `position`, the MCP server lays the visual out and
+writes positions back. Existing hand-placed nodes keep their positions unless `layout.relayout: true` (re-places every
+node). A new `layout.arrangement` or `layout.direction` (both stored on the visual) re-places everything; patching a
+group's `arrangement` or `treatment` re-places that group's children. Nodes without `size` are sized from their content
+(sizes are multiples of 8; card widths sm 176, md 224, lg 256); groups fit their children with equal left/right margins
+unless the group's `size` is given in the same batch. A patch value of `null` clears that field.
+
+Every container (the canvas or a group) has an arrangement. Default: `flow` when ordering edges or 2+ `layer` groups are
+present, else `row` (DOWN) / `column` (RIGHT) for up to 5 children, else `grid`.
+| arrangement | placement |
+|---|---|
+| `flow` | ranks along `direction`, longest-path ranking (sources pulled next to their first consumer), barycenter ordering. The longest chain (spine) sits dead centre on the axis; other ranks are centred on it; equal gaps. A node whose only way out is a back edge (a feedback step) goes to the outer gutter beside the flow, level with the midpoint of what it connects. Top-level `layer` groups chain in insertion order and get one common width. |
+| `stack` | children in insertion order along the direction, centred, `layer` bands equal width. In a stack or flow of bands, each band's row of parts takes the column grid of the widest band (same count) or spreads evenly across its span (other counts). |
+| `row` / `column` | one centred line, equal gaps (or equal centre spacing on a column grid); cards of one shape in a row share one height |
+| `ring` | members evenly round an ellipse starting at the top, in cycle order |
+| `hub` | most-connected child in the centre; spokes: 1-2 left/right, 3 adds top, 4 = cross, more = mirrored columns (+ top when odd) |
+| `tree` | tidy tree, parents centred over their children |
+| `grid` | equal cells, rows centred |
+| `free` | nothing moves; new nodes go in a row below |
+Nodes tied only by `requires`/`equals`/`versus`/`relates` sit beside their partner (right, then left, mirrored; the
+partner keeps its place on the axis). Edge kinds that drive order: `flow`, `becomes`, `increases`, `decreases`, `blocks`.
+
+Routing: lines attach at the midpoint of a side; several on one side spread symmetrically about it, except that a line
+running dead straight keeps the centre. Same-kind lines leaving or entering one side in the same direction share one
+port and split as a trunk. Sides are chosen for the fewest bends: straight, L (one elbow), Z (one jog, the channel slid
+clear of obstacles) or C through an outer gutter; a search router is the fallback. Lines never pass through cards, group
+titles or a group that holds neither end. Consecutive `ring` members are joined by a curve (a quarter ellipse between
+side midpoints, bulging outward); its badge and label sit on the arc (stacked when the arc runs steeply). Labels and kind badges sit centred on the line's main stretch (stacked along a
+vertical one), never on a stretch shared with another line. Rank gaps leave room for labels; a labelled fan gets twice.
+
+Tidiness (`tidiness(nodes, edges, {arrangement, direction})`, returned by apply, get_visual and snapshot):
+`defects` (off-centre attachments, more than two bends on an orthogonal line, unequal sibling gaps, ranks off the axis,
+satellites not level with their partner, ring/hub members without a mirror partner, lines through a group that holds
+neither end, group contents with unequal left/right margins, `row-uneven-height`, `row-misaligned` (a band's row off the
+widest band's columns), `ring-off-arc` (members off one ellipse, or an arc's badge/label off its arc) and
+`ring-unequal-angles`) and `metrics` (counts plus total and max bends).
 
 ## App behaviour
 - Left sidebar: projects → systems → visuals tree; create, rename, delete (confirm, to the Trash), reorder. Search.
@@ -170,16 +210,20 @@ Tools (keep names exactly):
 - `list_projects()`, `create_project({title, description?, notes?})`, `update_project`, `delete_project` (requires `confirm:true`)
 - `list_systems({projectId})`, `create_system({projectId, title, summary?, notes?})`, `update_system`, `delete_system` (confirm)
 - `list_visuals({projectId, systemId})`, `create_visual({projectId, systemId, title, description?, primary?})`,
-  `update_visual`, `get_visual({...ids})` → full JSON plus `boxes` (absolute `[x,y,w,h]` per node) and `warnings`,
+  `update_visual`, `get_visual({...ids})` → full JSON plus `boxes` (absolute `[x,y,w,h]` per node), `warnings` and `tidiness`,
   `delete_visual` (confirm)
 - `apply({ids, ops: Op[], layout?: {direction?: "DOWN"|"RIGHT", relayout?: boolean}})` — the one write tool for canvas
   content. Ops: `add_node`, `update_node`, `remove_node`, `add_edge`, `update_edge`, `remove_edge`, `set_viewport`.
+  `layout`: `{direction?, relayout?, arrangement?}`.
   Whole batch validated first (unknown kinds, dangling edge endpoints, missing explanation on new nodes/edges, duplicate ids,
-  parent not a group, size limits) and rejected atomically with precise, fixable error messages. Returns the new rev,
-  a compact summary, `boxes` and `warnings` (overlaps, clipped text, edges crossing cards, labels on cards or on other
-  edges' labels/lines, crowding).
+  parent not a group, size limits, `shape`/`art` only on cards, `art` with exactly one of svg/html/asset, `arrangement`/
+  `treatment` only on groups) and rejected atomically with precise, fixable error messages. Returns the new rev,
+  a compact summary, `boxes`, `warnings` (overlaps, clipped text, edges crossing cards, labels on cards or on other
+  edges' labels/lines, crowding, `illustration-node`: a visual/image whose only edge is a `relates` to one card) and
+  `tidiness`.
 - `add_asset({projectId, fromPath? | svg? | base64? + filename})` → writes into assets/ (checks above), returns the file name.
-- `snapshot({ids, width?})` → runs the app's headless snapshot mode and returns the PNG as an MCP image block plus `warnings`.
+- `snapshot({ids, width?})` → runs the app's headless snapshot mode and returns the PNG as an MCP image block plus `warnings`
+  and the tidiness defects.
   The app binary is found from `BLUEPRINT_APP_BIN`, the running app itself, a repo build, or the Applications folders.
 - `open({ids})` → opens the app at that visual (`open -g blueprint://open/...`, background, no focus steal).
 - `search({query})` → matches across project/system/visual titles, notes, node and edge text.
@@ -190,8 +234,11 @@ Server validates everything with zod and never writes outside the store.
   invent components to make a diagram look fuller. If unsure, add a node with state `question`.
 - One visual = one idea at one altitude. Aim for 5–12 nodes. More than ~15: split into several visuals of the same system
   (an overview plus detail visuals) instead of crowding one.
-- Show, don't caption: when a drawn vector or coded visual communicates faster than words, use a `visual` node
-  (inline SVG/HTML). Text on canvas stays short; depth goes in `explanation`, which appears on click.
+- The picture takes the system's shape: ring for a loop, hub for a centre, tree for a breakdown, flow for a sequence;
+  tiers only when the system is layered. No boxes in boxes; one group level is the norm.
+- Show, don't caption, and put the art on the part: a drawing of a part is that card's `art`. Text on canvas stays short;
+  depth goes in `explanation`, which appears on click.
+- Symmetry: centred ranks, straight main line, midpoint attachments; fix every warning and tidiness defect.
 - Pick the relationship kind that is literally true. Use `relates` only when nothing more specific is known.
   Use operator nodes for combinations ("A + B = C"), groups for belonging/tiers/alternatives/boundaries.
 - Every node and edge gets an `explanation` so a click answers "what does this mean and why is it here".

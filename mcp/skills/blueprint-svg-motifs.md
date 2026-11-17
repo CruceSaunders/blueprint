@@ -1,11 +1,11 @@
 ---
 name: blueprint-svg-motifs
-description: Load when you are about to draw a Blueprint `visual` node and one of these shapes fits the idea - funnel, stack of layers, two-step loop, gauge, bar trend, hub-and-spoke network, balance scale, timeline, gate, flywheel. Ten copy-ready inline SVG recipes that pass the app's sanitiser and read in light and dark mode. Pair with blueprint-declutter-and-svg-craft for the drawing rules.
+description: Load when you are about to draw a Blueprint card's `art` (or a standalone `visual` node) and one of these shapes fits the idea - funnel, stack of layers, two-step loop, gauge, bar trend, hub-and-spoke network, balance scale, timeline, gate, flywheel. Ten copy-ready inline SVG recipes that pass the app's sanitiser and read in light and dark mode. Pair with blueprint-declutter-and-svg-craft for the drawing rules.
 ---
 
 # Blueprint SVG motif recipes
 
-Each recipe is a complete `svg` value for a `visual` node. All share one frame: `viewBox="0 0 240 140"`, ink in `currentColor`, one accent hue at partial `fill-opacity`, text at 11-13 units, arrowheads drawn as small polygons (no `<defs>`, `<marker>`, ids, `<style>` or scripts). Change the words and numbers; keep the geometry unless the snapshot shows a problem. Put the claim in the node `title` and any extra sentence in `caption`, not inside the drawing.
+Each recipe is a complete `svg` value. Use it as the `art` of the card it depicts (`"art": {"svg": "...", "size": "md"}`): the funnel goes on the filter's card, the gauge on the capacity card. Inside art, drop the text labels (the card's title names it) unless the words are the point. A standalone `visual` node is only for a picture of the whole map. Before reaching for motif 3, 6 or 10, ask whether the map itself should be a `ring` or `hub` arrangement instead of a small drawing of one. All share one frame: `viewBox="0 0 240 140"`, ink in `currentColor`, one accent hue at partial `fill-opacity`, text at 11-13 units, arrowheads drawn as small polygons (no `<defs>`, `<marker>`, ids, `<style>` or scripts). Change the words and numbers; keep the geometry unless the snapshot shows a problem. Put the claim in the card's `title`/`subtitle` and any extra sentence in `explanation`, not inside the drawing.
 
 Accent hues that hold up on both themes: blue `#3b82f6`, green `#10b981`, amber `#f59e0b`, red `#ef4444`, violet `#8b5cf6`, slate `#64748b`. Use one hue per drawing unless the colours mean different things; never let colour be the only signal.
 

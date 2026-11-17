@@ -11,11 +11,11 @@ import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { GUIDE, SKILLS } from "./content.generated.js";
 import * as S from "./store.js";
-import { applyOps, boxesOf } from "./apply.js";
-import { diagnose } from "./layout.js";
+import { applyOps, boxesOf, visualLayout } from "./apply.js";
+import { diagnose, tidiness, ARRANGEMENTS } from "./layout.js";
 import { ASSET_EXTS, checkContent, readSource } from "./assets.js";
 
-export const VERSION = "0.1.1";
+export const VERSION = "0.2.0";
 
 /** How to run the app for `snapshot`: a binary plus any leading args (e.g. the app dir for an unpackaged Electron). */
 export interface AppLauncher { bin: string; args: string[] }
@@ -222,9 +222,9 @@ tool("update_visual", "Update a visual's title or description (use apply for can
     });
     return json({ visualId: v.id ?? a.visualId, rev: v.rev });
   });
-tool("get_visual", "Return the full visual JSON (nodes, edges, viewport, rev) plus `boxes`: each node's absolute bounding box [x, y, w, h] in canvas pixels, and `warnings` (overlaps, clipped text, edges crossing cards).", vIds, (a) => {
+tool("get_visual", "Return the full visual JSON (nodes, edges, viewport, rev) plus `boxes`: each node's absolute bounding box [x, y, w, h] in canvas pixels, `warnings` (overlaps, clipped text, edges crossing cards) and `tidiness` (symmetry and line defects).", vIds, (a) => {
   const v = readVisual(a.projectId, a.systemId, a.visualId);
-  return json({ ...v, boxes: boxesOf(v.nodes ?? []), warnings: diagnose(v.nodes ?? [], v.edges ?? []) });
+  return json({ ...v, boxes: boxesOf(v.nodes ?? []), warnings: diagnose(v.nodes ?? [], v.edges ?? []), tidiness: tidiness(v.nodes ?? [], v.edges ?? [], visualLayout(v)) });
 });
 tool("delete_visual", "Permanently delete a visual. Requires confirm:true.", { ...vIds, confirm: confirmField }, async (a) => {
   needConfirm(a.confirm, `visual '${a.visualId}'`);
@@ -241,10 +241,10 @@ tool("delete_visual", "Permanently delete a visual. Requires confirm:true.", { .
 // ---- apply
 tool("apply",
   "The one write tool for canvas content. Ops: add_node{node}, update_node{id,patch}, remove_node{id}, add_edge{edge}, update_edge{id,patch}, remove_edge{id}, set_viewport{viewport}. " +
-  "Whole batch is validated first and rejected atomically with fixable errors. New nodes without position are auto-laid-out; layout is optional per call ({direction, relayout:true} re-places every node). " +
-  "Returns rev, summary, `boxes` (each node's absolute [x,y,w,h]) and `warnings` (overlaps, clipped text, edges crossing cards, crowding): fix them. Call guide for shapes and an example.",
+  "Whole batch is validated first and rejected atomically with fixable errors. New nodes without position are auto-laid-out; layout is optional per call ({arrangement, direction, relayout:true}; arrangement and direction are remembered on the visual). " +
+  "Returns rev, summary, `boxes` (each node's absolute [x,y,w,h]), `warnings` (overlaps, clipped text, edges crossing cards, crowding, illustration nodes) and `tidiness` (defects: off-centre attachments, extra bends, unequal gaps, off-axis ranks, lines through foreign groups): fix both. Call guide for arrangements, shapes and an example.",
   { ...vIds, ops: z.array(z.unknown()).describe("array of operations"),
-    layout: z.object({ direction: z.enum(["DOWN", "RIGHT"]).optional(), relayout: z.boolean().optional() }).optional() },
+    layout: z.object({ direction: z.enum(["DOWN", "RIGHT"]).optional(), relayout: z.boolean().optional(), arrangement: z.enum(ARRANGEMENTS as [string, ...string[]]).optional() }).optional() },
   async (a) => {
     const file = S.visualFile(a.projectId, a.systemId, a.visualId);
     readVisual(a.projectId, a.systemId, a.visualId);
@@ -257,7 +257,7 @@ tool("apply",
         result = r;
         return r.visual;
       });
-      return json({ ok: true, rev: v.rev, summary: result.summary, warnings: result.warnings, boxes: result.boxes });
+      return json({ ok: true, rev: v.rev, summary: result.summary, warnings: result.warnings, tidiness: result.tidiness, boxes: result.boxes });
     } catch (e: any) {
       if (rejected) return fail(`apply rejected; nothing was written (rev unchanged). Fix all ${rejected.errors.length} error(s) and resend the whole batch:\n` + rejected.errors.map((x: string) => `- ${x}`).join("\n"));
       throw e;
@@ -309,9 +309,11 @@ tool("snapshot", "Render the visual headlessly with the Blueprint app and return
     fs.rmSync(out, { force: true });
     const v = readVisual(a.projectId, a.systemId, a.visualId);
     const warns = diagnose(v.nodes ?? [], v.edges ?? []);
+    const tid = tidiness(v.nodes ?? [], v.edges ?? [], visualLayout(v));
     const content: Content[] = [
       { type: "image", data, mimeType: "image/png" },
-      { type: "text", text: warns.length ? `warnings (${warns.length}):\n` + warns.map((w) => `- ${w}`).join("\n") : "warnings: none" },
+      { type: "text", text: (warns.length ? `warnings (${warns.length}):\n` + warns.map((w) => `- ${w}`).join("\n") : "warnings: none") +
+        `\ntidiness: ${tid.defects.length} defect(s); bends ${tid.metrics.bends} total, max ${tid.metrics.maxBends} per edge` + (tid.defects.length ? "\n" + tid.defects.map((d) => `- ${d}`).join("\n") : "") },
     ];
     return { content };
   });
@@ -361,5 +363,13 @@ export async function runStdio(opts: ServerOptions = {}): Promise<void> {
     transport.onclose = () => resolve();
     process.stdin.on("end", () => resolve());
     process.stdin.on("close", () => resolve());
+    // The client reading our stdout went away: nothing more can be answered.
+    process.stdout.on("error", () => resolve());
+    // Orphaned: the AI session that started us died but something else still holds our stdin open, so no EOF ever
+    // arrives. Being re-parented (to launchd) means the session is gone.
+    const parent = process.ppid;
+    const watch = setInterval(() => { if (process.ppid !== parent || process.ppid === 1) resolve(); }, 1000);
+    watch.unref();
+    for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"] as const) process.once(sig, () => resolve());
   });
 }

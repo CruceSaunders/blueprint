@@ -185,6 +185,14 @@ function planSkills(dir: string, home: string, install: boolean, dry: boolean, t
   }
 }
 
+/** Read-only: does this tool's config already list the `blueprint` server? (Used by the app's AI status.) */
+export function registered(t: ToolInfo): boolean {
+  const text = readText(t.config);
+  if (!text) return false;
+  if (t.id === "codex") return findBlock(text.split("\n")) !== null;
+  try { const o = JSON.parse(text); return !!(o && typeof o === "object" && o.mcpServers && o.mcpServers[SERVER]); } catch { return false; }
+}
+
 // ---------- entry points ----------
 export interface RunOptions { home: string; launch: Launch; tools?: ToolId[]; dryRun?: boolean; now?: Date }
 

@@ -16,4 +16,11 @@ function DropdownMenuItem({ className, destructive, ...props }: React.ComponentP
 function DropdownMenuSeparator(props: React.ComponentProps<typeof DM.Separator>) {
   return <DM.Separator className="-mx-1 my-1 h-px bg-border" {...props} />;
 }
-export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator };
+const DropdownMenuSub = DM.Sub;
+function DropdownMenuSubTrigger({ className, children, ...props }: React.ComponentProps<typeof DM.SubTrigger>) {
+  return <DM.SubTrigger className={cn("flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-[13px] outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-accent data-[state=open]:bg-accent [&_svg]:size-3.5 [&_svg]:text-muted-foreground", className)} {...props}>{children}<span className="ml-auto text-muted-foreground">›</span></DM.SubTrigger>;
+}
+function DropdownMenuSubContent({ className, ...props }: React.ComponentProps<typeof DM.SubContent>) {
+  return <DM.Portal><DM.SubContent sideOffset={6} className={cn("z-50 min-w-40 rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg", className)} {...props} /></DM.Portal>;
+}
+export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent };

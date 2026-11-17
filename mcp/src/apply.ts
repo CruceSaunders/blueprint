@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { arrange, absoluteBoxes, diagnose, type LNode, type LEdge } from "./layout.js";
+import { arrange, absoluteBoxes, diagnose, tidiness, ARRANGEMENTS, SHAPES, TREATMENTS, type LNode, type LEdge, type Tidiness, type LayoutDirection } from "./layout.js";
 
 export const NODE_KINDS = ["card", "visual", "image", "operator", "note", "group"] as const;
 export const EDGE_KINDS = ["flow", "increases", "decreases", "requires", "becomes", "equals", "versus", "blocks", "relates"] as const;
@@ -26,6 +26,14 @@ const nodeFields = {
   svg: z.string().max(LIMITS.svg, `svg is longer than ${LIMITS.svg} characters; simplify the drawing or split it`).optional(),
   html: z.string().max(LIMITS.html, `html is longer than ${LIMITS.html} characters; simplify it`).optional(),
   asset: z.string().max(200).optional(), caption: z.string().max(LIMITS.text).optional(),
+  shape: z.enum(SHAPES as [string, ...string[]]).optional(),
+  art: z.object({
+    svg: z.string().max(LIMITS.svg, `art.svg is longer than ${LIMITS.svg} characters; simplify the drawing`).optional(),
+    html: z.string().max(LIMITS.html, `art.html is longer than ${LIMITS.html} characters; simplify it`).optional(),
+    asset: z.string().max(200).optional(), size: z.enum(["sm", "md", "lg"]).optional(),
+  }).strict().optional(),
+  arrangement: z.enum(ARRANGEMENTS as [string, ...string[]]).optional(),
+  treatment: z.enum(TREATMENTS as [string, ...string[]]).optional(),
 };
 const nodeShape = z.object({ id: z.string().max(80).optional(), kind: z.string().max(40), ...nodeFields }).strict();
 const nullable = Object.fromEntries(Object.entries(nodeFields).map(([k, v]) => [k, (v as any).unwrap().nullable().optional()]));
@@ -39,15 +47,21 @@ const edgeShape = z.object({ id: z.string().max(200).optional(), source: z.strin
 const edgePatch = z.object({ source: z.string().optional(), target: z.string().optional(), kind: z.string().optional(),
   ...Object.fromEntries(Object.entries(edgeFields).map(([k, v]) => [k, (v as any).unwrap().nullable().optional()])) }).strict();
 const viewport = z.object({ x: z.number(), y: z.number(), zoom: z.number().positive() }).strict();
+/** The write schemas, for scripts/spec-check.mjs (SPEC.md and these must list the same fields). */
+export const SCHEMAS = { node: nodeShape, edge: edgeShape, viewport, tones: TONES, states: STATES, weights: WEIGHTS };
 
 const OP_NAMES = ["add_node", "update_node", "remove_node", "add_edge", "update_edge", "remove_edge", "set_viewport"];
 
 function fmtIssues(prefix: string, err: z.ZodError): string[] {
   return err.issues.map((i) => {
-    if (i.code === "unrecognized_keys")
-      return `${prefix}: unknown field(s) ${(i as any).keys.map((k: string) => `\`${k}\``).join(", ")}. Allowed node fields: kind, position, size, parent, title, subtitle, explanation, icon, tone, state, weight, operator, groupKind, svg, html, asset, caption. Edge fields: source, target, kind, label, explanation, both, sourceHandle, targetHandle.`;
+    if (i.code === "unrecognized_keys" && !i.path.length)
+      return `${prefix}: unknown field(s) ${(i as any).keys.map((k: string) => `\`${k}\``).join(", ")}. Allowed node fields: kind, position, size, parent, title, subtitle, explanation, icon, tone, state, weight, shape, art, operator, groupKind, arrangement, treatment, svg, html, asset, caption. \`art\` fields: svg, html, asset, size. Edge fields: source, target, kind, label, explanation, both, sourceHandle, targetHandle.`;
     if (i.path[0] === "position") return `${prefix}: \`position\` must be {"x": number, "y": number} in canvas pixels (relative to the parent group's top-left if the node has a parent), e.g. {"x": 120, "y": 40}. Or leave it out and Blueprint places the node.`;
     if (i.path[0] === "size") return `${prefix}: \`size\` must be {"w": number, "h": number} with both above 0, e.g. {"w": 220, "h": 80}. Usually leave it out: Blueprint sizes nodes from their text.`;
+    if (i.path[0] === "art" && i.code === "unrecognized_keys") return `${prefix}: \`art\` takes {svg | html | asset, size?: "sm"|"md"|"lg"} (exactly one of svg, html, asset).`;
+    if (i.path[0] === "shape") return `${prefix}: \`shape\` must be one of ${SHAPES.join(", ")} (cards only).`;
+    if (i.path[0] === "arrangement") return `${prefix}: \`arrangement\` must be one of ${ARRANGEMENTS.join(", ")} (groups only; for the whole canvas pass layout.arrangement).`;
+    if (i.path[0] === "treatment") return `${prefix}: \`treatment\` must be one of ${TREATMENTS.join(", ")} (groups only).`;
     if (i.path[0] === "sourceHandle" || i.path[0] === "targetHandle") return `${prefix}: \`${String(i.path[0])}\` must be one of top, right, bottom, left (or leave it out to let Blueprint pick the facing sides).`;
     const p = i.path.length ? ` field \`${i.path.join(".")}\`` : "";
     return `${prefix}:${p} ${i.message}.`;
@@ -68,7 +82,15 @@ function checkNodeIntrinsic(prefix: string, n: any, errors: string[], warnings: 
     errors.push(`${prefix}: kind 'visual' needs \`svg\` (inline SVG) or \`html\` (self-contained HTML).`);
   if (n.operator && n.kind !== "operator") errors.push(`${prefix}: \`operator\` only applies to kind 'operator'.`);
   if (n.groupKind && n.kind !== "group") errors.push(`${prefix}: \`groupKind\` only applies to kind 'group'.`);
-  if ((n.svg || n.html) && n.kind !== "visual") errors.push(`${prefix}: \`svg\`/\`html\` only apply to kind 'visual'.`);
+  if ((n.svg || n.html) && n.kind !== "visual") errors.push(`${prefix}: \`svg\`/\`html\` only apply to kind 'visual'. To put a drawing on a card, use the card's \`art\` field: {"art": {"svg": "..."}}.`);
+  if (n.shape && n.kind !== "card") errors.push(`${prefix}: \`shape\` only applies to kind 'card'.`);
+  if (n.art) {
+    if (n.kind !== "card") errors.push(`${prefix}: \`art\` only applies to kind 'card' (a drawing that is its own element is a 'visual' node).`);
+    const given = ["svg", "html", "asset"].filter((k) => n.art[k]);
+    if (given.length !== 1) errors.push(`${prefix}: \`art\` needs exactly one of svg, html or asset (got ${given.length ? given.join(" + ") : "none"}).`);
+    if (n.art.svg && /<script|<style|<foreignObject|\son\w+\s*=/i.test(n.art.svg)) warnings.push(`${prefix}: art.svg contains <script>, <style>, <foreignObject> or event handlers; they are stripped on render.`);
+  }
+  if ((n.arrangement || n.treatment) && n.kind !== "group") errors.push(`${prefix}: \`arrangement\`/\`treatment\` only apply to kind 'group' (for the whole canvas pass layout.arrangement).`);
   if (n.title && wc(n.title) > 5) warnings.push(`${prefix}: title "${n.title}" is over 5 words; keep titles short and put depth in explanation.`);
   if (n.subtitle && wc(n.subtitle) > 8) warnings.push(`${prefix}: subtitle is over 8 words.`);
   if (n.svg && /<script|<style|<foreignObject|\son\w+\s*=/i.test(n.svg)) warnings.push(`${prefix}: svg contains <script>, <style>, <foreignObject> or event handlers; they are stripped on render, so style with presentation attributes instead.`);
@@ -76,7 +98,12 @@ function checkNodeIntrinsic(prefix: string, n: any, errors: string[], warnings: 
 
 export interface ApplyResult {
   ok: boolean; errors: string[]; warnings: string[];
-  visual?: any; summary?: string; boxes?: Record<string, [number, number, number, number]>;
+  visual?: any; summary?: string; boxes?: Record<string, [number, number, number, number]>; tidiness?: Tidiness;
+}
+export interface LayoutArg { direction?: LayoutDirection; relayout?: boolean; arrangement?: string }
+/** Visual-level layout settings: what this call asks for, else what the visual stored. */
+export function visualLayout(visual: any, layout: LayoutArg = {}) {
+  return { direction: (layout.direction ?? visual.direction ?? "DOWN") as LayoutDirection, arrangement: layout.arrangement ?? visual.arrangement };
 }
 /** Absolute bounding box per node as [x, y, w, h] in canvas pixels. */
 export function boxesOf(nodes: any[]): Record<string, [number, number, number, number]> {
@@ -85,9 +112,9 @@ export function boxesOf(nodes: any[]): Record<string, [number, number, number, n
   return out;
 }
 
-/** Validate and apply ops to a visual (pure, no I/O except elk). Returns errors without touching the input. */
+/** Validate and apply ops to a visual (pure, no I/O). Returns errors without touching the input. */
 export async function applyOps(
-  visual: any, ops: unknown[], layout: { direction?: "DOWN" | "RIGHT"; relayout?: boolean } = {},
+  visual: any, ops: unknown[], layout: LayoutArg = {},
   assetExists: (name: string) => boolean = () => true,
 ): Promise<ApplyResult> {
   const errors: string[] = [], warnings: string[] = [];
@@ -97,7 +124,7 @@ export async function applyOps(
   const added = { nodes: 0, edges: 0 }, removed = { nodes: 0, edges: 0 }, updated = { nodes: 0, edges: 0 };
   const newNodeIds = new Set<string>();
   const origIds = (visual.nodes ?? []).map((n: any) => n.id);
-  const edgeOp = new Map<string, number>(), keepGroupSize = new Set<string>();
+  const edgeOp = new Map<string, number>(), keepGroupSize = new Set<string>(), rearranged = new Set<string>();
   const nodeIx = (id: string) => nodes.findIndex((n) => n.id === id);
   const edgeIx = (id: string) => edges.findIndex((e) => e.id === id);
   const uniq = (base: string, has: (id: string) => boolean) => { let id = base, n = 2; while (has(id)) id = `${base}-${n++}`; return id; };
@@ -120,6 +147,7 @@ export async function applyOps(
         if (nodeIx(n.id) >= 0) errors.push(`${pfx}: duplicate node id; '${n.id}' already exists in this visual (or earlier in this batch). Pick a unique id.`);
         checkNodeIntrinsic(pfx, n, errors, warnings);
         if (n.kind === "image" && n.asset && !assetExists(n.asset)) errors.push(`${pfx}: asset '${n.asset}' not found in the project's assets/. Call add_asset first.`);
+        if (n.art?.asset && !assetExists(n.art.asset)) errors.push(`${pfx}: art.asset '${n.art.asset}' not found in the project's assets/. Call add_asset first.`);
         if (n.kind === "group" && !n.groupKind) n.groupKind = "group";
         if (n.kind === "group" && n.size) keepGroupSize.add(n.id);
         nodes.push(n); newNodeIds.add(n.id); added.nodes++;
@@ -134,7 +162,9 @@ export async function applyOps(
         for (const k of Object.keys(merged)) if (merged[k] === null) delete merged[k];
         checkNodeIntrinsic(`${head} '${raw.id}'`, merged, errors, warnings);
         if (merged.kind === "image" && merged.asset && !assetExists(merged.asset)) errors.push(`${head} '${raw.id}': asset '${merged.asset}' not found in assets/.`);
+        if (merged.art?.asset && !assetExists(merged.art.asset)) errors.push(`${head} '${raw.id}': art.asset '${merged.art.asset}' not found in assets/.`);
         if (merged.kind === "group" && raw.patch.size) keepGroupSize.add(merged.id);
+        if (merged.kind === "group" && ("arrangement" in raw.patch || "treatment" in raw.patch)) rearranged.add(merged.id);
         nodes[ix] = merged; updated.nodes++;
         break;
       }
@@ -213,19 +243,28 @@ export async function applyOps(
   if (edges.length > LIMITS.edges) errors.push(`The visual would have ${edges.length} edges; the limit is ${LIMITS.edges}.`);
   if (errors.length) return { ok: false, errors, warnings };
 
+  if (layout.arrangement !== undefined && !(ARRANGEMENTS as string[]).includes(layout.arrangement))
+    return { ok: false, errors: [`layout.arrangement must be one of ${ARRANGEMENTS.join(", ")}.`], warnings };
+  const lay = visualLayout(visual, layout);
+  // a new canvas arrangement or direction re-places everything; a group's new arrangement re-places its contents
+  const changed = (layout.arrangement !== undefined && layout.arrangement !== visual.arrangement) || (layout.direction !== undefined && layout.direction !== (visual.direction ?? "DOWN"));
+  const replace = new Set<string>();
+  for (const g of rearranged) { replace.add(g); for (const n of nodes) if (n.parent === g) replace.add(n.id); }
   let finalNodes: any[] = nodes, finalEdges: any[] = edges, needs = false;
   try {
-    const r = await arrange(nodes as LNode[], edges as LEdge[], { ...layout, keepGroupSize });
+    const r = await arrange(nodes as LNode[], edges as LEdge[], { ...lay, relayout: !!layout.relayout || (changed && (visual.nodes ?? []).length > 0), replace, keepGroupSize });
     finalNodes = r.nodes; finalEdges = r.edges; needs = r.laidOut;
   } catch (e: any) { return { ok: false, errors: [`auto-layout failed: ${e?.message ?? e}. Give explicit positions or simplify the graph.`], warnings }; }
   warnings.push(...diagnose(finalNodes as LNode[], finalEdges as LEdge[]));
-  const out = { ...visual, nodes: finalNodes, edges: finalEdges, viewport: vp };
+  const out: any = { ...visual, nodes: finalNodes, edges: finalEdges, viewport: vp };
+  if (layout.arrangement !== undefined) out.arrangement = layout.arrangement;
+  if (layout.direction !== undefined) out.direction = layout.direction;
   const bits = [
     added.nodes && `+${added.nodes} node(s)`, updated.nodes && `~${updated.nodes} node(s)`, removed.nodes && `-${removed.nodes} node(s)`,
     added.edges && `+${added.edges} edge(s)`, updated.edges && `~${updated.edges} edge(s)`, removed.edges && `-${removed.edges} edge(s)`,
     needs && "auto-layout applied",
   ].filter(Boolean);
-  return { ok: true, errors: [], warnings, visual: out, summary: `${bits.join(", ") || "no changes"}; now ${finalNodes.length} nodes, ${finalEdges.length} edges`, boxes: boxesOf(finalNodes) };
+  return { ok: true, errors: [], warnings, visual: out, summary: `${bits.join(", ") || "no changes"}; now ${finalNodes.length} nodes, ${finalEdges.length} edges`, boxes: boxesOf(finalNodes), tidiness: tidiness(finalNodes as LNode[], finalEdges as LEdge[], lay) };
 }
 
 function slug(s: string) {
