@@ -21,7 +21,7 @@ const html = `<!doctype html><html><head><style>
   .brand{font-size:28px;font-weight:650;letter-spacing:-.01em}
   h1{position:absolute;left:64px;top:118px;margin:0;font-size:48px;line-height:1.02;letter-spacing:-.035em;font-weight:760;max-width:1000px}
   .map{position:absolute;left:64px;right:64px;top:200px;height:390px;border:1px solid rgba(30,42,94,.12);border-radius:16px;background:#fdfdfe;overflow:hidden;box-shadow:0 20px 50px -24px rgba(30,42,94,.35)}
-  .map img{width:100%;height:100%;object-fit:cover;object-position:50% 40%}
+  .map img{width:100%;height:100%;object-fit:contain;object-position:center}
 </style></head><body><div class="grid"></div>
 <div class="top"><img src="data:image/svg+xml;base64,${logo}"><span class="brand">Blueprint</span></div>
 <h1>A canvas where your AI draws your systems</h1>

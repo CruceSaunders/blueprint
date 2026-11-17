@@ -16,6 +16,8 @@ function run(tool, args) {
   const f = join(tmp, `${tool}.json`);
   writeFileSync(f, JSON.stringify(args));
   const out = execFileSync(process.execPath, [call, tool, "--file", f], { env: process.env, encoding: "utf8" });
+  const result = JSON.parse(out);
+  if (result.ok === false || result.warnings?.length) throw new Error(`${tool}: ${out}`);
   console.log(`--- ${tool}\n${out.trim().slice(0, 1500)}`);
   return out;
 }

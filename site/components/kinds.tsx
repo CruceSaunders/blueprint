@@ -1,7 +1,7 @@
 import { EdgeLine, EdgeSwatch, type Kind } from "./edge-glyph";
 
 // The nine relationship kinds. Names and plain-words meanings are the app's own (app/src/lib/vocab.ts EDGE_INFO),
-// shown the way its detail panel shows them. Pick one to watch its line draw between two cards.
+// shown the way its floating detail card shows them. Pick one to watch its line draw between two cards.
 // Pattern adapted from 21st.dev "Feature List Showcase" (select an item, reveal its description).
 // Selection is wired by the inline script in components/behaviour.tsx; without JS the first kind stays shown.
 export const KINDS: [Kind, string][] = [

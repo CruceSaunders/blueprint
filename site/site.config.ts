@@ -21,16 +21,16 @@ export const SHOTS = {
     dark: "/shots/app-dark.webp",
     width: 2880,
     height: 1800,
-    alt: "The Blueprint app showing a coffee shop's money map. The line from Long queue to Cups sold is selected, and the side panel explains it: a long queue stops some sales.",
-    // Phones: two crops of the same capture, stacked. Cards with the selected line, then the top of the side panel.
-    canvas: { light: "/shots/app-canvas-light.webp", dark: "/shots/app-canvas-dark.webp", width: 1202, height: 547 },
-    panel: { light: "/shots/app-panel-light.webp", dark: "/shots/app-panel-dark.webp", width: 678, height: 540 },
+    alt: "The Blueprint app showing a coffee shop's money map. The line from Long queue to Cups sold is selected, and the floating detail card explains it: a long queue stops some sales.",
+    // Phones: two crops of the same capture, stacked. Cards with the selected line, then the whole floating detail card.
+    canvas: { light: "/shots/app-canvas-light.webp", dark: "/shots/app-canvas-dark.webp", width: 1096, height: 450 },
+    panel: { light: "/shots/app-panel-light.webp", dark: "/shots/app-panel-dark.webp", width: 696, height: 382 },
   },
   map: {
     light: "/shots/map-light.webp",
     dark: "/shots/map-dark.webp",
     width: 1600,
-    height: 571,
+    height: 291,
     alt: "A map Blueprint drew of how a coffee shop makes money: cups sold times price equals revenue, revenue raises profit, costs lower it, and a long queue blocks sales.",
   },
   og: { src: "/og.png", width: 1200, height: 630, alt: "Blueprint: a canvas where your AI draws your systems, over a map of how a coffee shop makes money." },
