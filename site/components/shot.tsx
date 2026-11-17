@@ -20,11 +20,8 @@ export function ShotImage({ shot, priority = false, sizes }: { shot: Shot; prior
   );
 }
 
-// 1x1 transparent GIF: lets a <picture> skip its download at widths where it is hidden.
-const NONE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-
-// Hero capture. Wide screens: the full app window. Phones: the same capture as two tight crops, stacked.
-export function HeroShot({ shot }: { shot: Shot & { canvas: Variant; panel: Variant } }) {
+// Hero capture. Wide screens: the full app window. Phones: a crop of the same capture (the map and its open detail card).
+export function HeroShot({ shot }: { shot: Shot & { canvas: Variant } }) {
   const wide = "(min-width: 640px)";
   return (
     <>
@@ -41,11 +38,6 @@ export function HeroShot({ shot }: { shot: Shot & { canvas: Variant; panel: Vari
           fetchPriority="high"
           decoding="async"
         />
-      </picture>
-      <picture className="block border-t border-line sm:hidden">
-        <source srcSet={NONE} media={wide} />
-        <source srcSet={shot.panel.dark} media="(prefers-color-scheme: dark)" />
-        <img src={shot.panel.light} width={shot.panel.width} height={shot.panel.height} alt="" loading="eager" decoding="async" />
       </picture>
     </>
   );

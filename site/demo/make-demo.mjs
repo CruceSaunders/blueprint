@@ -10,14 +10,15 @@ import os from "node:os";
 const here = dirname(fileURLToPath(import.meta.url));
 const home = process.env.BLUEPRINT_HOME;
 if (!home || home === join(os.homedir(), "Blueprint")) throw new Error("Set BLUEPRINT_HOME to a scratch directory");
-const call = join(here, "../../mcp/scripts/call.mjs");
+// Talks to `$BLUEPRINT_APP_BIN --mcp` (a packaged app) when set, else the repo's mcp/dist build.
+const call = join(here, "../scripts/mcp-call.mjs");
 const tmp = mkdtempSync(join(os.tmpdir(), "bp-demo-"));
 function run(tool, args) {
   const f = join(tmp, `${tool}.json`);
   writeFileSync(f, JSON.stringify(args));
   const out = execFileSync(process.execPath, [call, tool, "--file", f], { env: process.env, encoding: "utf8" });
   const result = JSON.parse(out);
-  if (result.ok === false || result.warnings?.length) throw new Error(`${tool}: ${out}`);
+  if (result.ok === false || result.warnings?.length || result.tidiness?.defects?.length) throw new Error(`${tool}: ${out}`);
   console.log(`--- ${tool}\n${out.trim().slice(0, 1500)}`);
   return out;
 }

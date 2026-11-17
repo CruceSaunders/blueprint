@@ -3,7 +3,7 @@
   "systemId": "how-the-shop-makes-money",
   "visualId": "overview",
   "layout": {
-    "direction": "RIGHT"
+    "direction": "DOWN"
   },
   "ops": [
     {
@@ -11,6 +11,7 @@
       "node": {
         "id": "customers",
         "kind": "card",
+        "shape": "circle",
         "title": "Customers",
         "icon": "users",
         "explanation": "People who walk in. More of them means more cups sold."
@@ -24,7 +25,7 @@
         "title": "Long queue",
         "icon": "clock",
         "tone": "warn",
-        "explanation": "When the line is too long, some people leave without buying."
+        "explanation": "At busy times the line gets long, and some people leave without buying."
       }
     },
     {
@@ -34,11 +35,11 @@
         "kind": "card",
         "title": "Cups sold",
         "subtitle": "Per day",
-        "explanation": "How many drinks the shop sells in a day. Each cup sold is one unit of the business: it brings in its price and uses up beans and milk.",
         "art": {
           "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 240 140\"><path d=\"M70 40 H160 L152 118 Q151 126 143 126 H87 Q79 126 78 118 Z\" fill=\"#f59e0b\" fill-opacity=\".3\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linejoin=\"round\"/><path d=\"M160 56 Q188 56 186 78 Q184 98 156 98\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"/><path d=\"M74 52 H156\" stroke=\"#f59e0b\" stroke-width=\"3\"/><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-opacity=\".6\"><path d=\"M96 32 Q90 24 96 16 Q102 8 96 2\"/><path d=\"M116 32 Q110 24 116 16 Q122 8 116 2\"/><path d=\"M136 32 Q130 24 136 16 Q142 8 136 2\"/></g></svg>",
           "size": "sm"
-        }
+        },
+        "explanation": "How many drinks the shop sells in a day. Each cup brings in its price and uses up beans and milk."
       }
     },
     {
@@ -63,53 +64,22 @@
     {
       "op": "add_node",
       "node": {
-        "id": "eq",
-        "kind": "operator",
-        "operator": "=",
-        "explanation": "The result of the multiplication."
-      }
-    },
-    {
-      "op": "add_node",
-      "node": {
         "id": "revenue",
         "kind": "card",
         "title": "Revenue",
         "icon": "banknote",
-        "explanation": "All the money that comes in from sales."
+        "explanation": "All the money that comes in from sales: cups sold times price per cup."
       }
     },
     {
       "op": "add_node",
       "node": {
         "id": "costs",
-        "kind": "group",
-        "groupKind": "group",
+        "kind": "card",
         "title": "Costs",
-        "explanation": "What the shop pays out to keep running.",
-        "arrangement": "row"
-      }
-    },
-    {
-      "op": "add_node",
-      "node": {
-        "id": "beans",
-        "kind": "card",
-        "parent": "costs",
-        "title": "Beans and milk",
-        "icon": "package",
-        "explanation": "Ingredients. This cost rises with every cup sold."
-      }
-    },
-    {
-      "op": "add_node",
-      "node": {
-        "id": "rent",
-        "kind": "card",
-        "parent": "costs",
-        "title": "Rent and staff",
-        "icon": "building",
-        "explanation": "Fixed costs. The shop pays them however many cups it sells."
+        "subtitle": "Beans, milk, rent, staff",
+        "icon": "receipt",
+        "explanation": "What the shop pays out. Beans and milk rise with every cup sold; rent and staff are paid however many cups the shop sells."
       }
     },
     {
@@ -121,7 +91,7 @@
         "icon": "piggy-bank",
         "tone": "good",
         "weight": "lg",
-        "explanation": "What is left of revenue after all costs are paid."
+        "explanation": "What is left of revenue after all costs are paid. This is the number the shop is run for."
       }
     },
     {
@@ -142,17 +112,8 @@
         "source": "queue",
         "target": "cups",
         "kind": "blocks",
-        "explanation": "A long queue stops some sales: people give up and leave."
-      }
-    },
-    {
-      "op": "add_edge",
-      "edge": {
-        "id": "e-price-customers",
-        "source": "price",
-        "target": "customers",
-        "kind": "decreases",
-        "explanation": "Raise the price too far and fewer people come in."
+        "label": "turns some away",
+        "explanation": "A long queue stops some sales: people who will not wait leave without a cup."
       }
     },
     {
@@ -162,7 +123,7 @@
         "source": "cups",
         "target": "times",
         "kind": "flow",
-        "explanation": "Cups sold go into the sum."
+        "explanation": "The number of cups sold feeds the multiplication."
       }
     },
     {
@@ -172,27 +133,17 @@
         "source": "price",
         "target": "times",
         "kind": "flow",
-        "explanation": "The price goes into the sum."
+        "explanation": "The price per cup feeds the multiplication."
       }
     },
     {
       "op": "add_edge",
       "edge": {
-        "id": "e-times-eq",
+        "id": "e-times-revenue",
         "source": "times",
-        "target": "eq",
-        "kind": "flow",
-        "explanation": "Cups sold times price gives the result."
-      }
-    },
-    {
-      "op": "add_edge",
-      "edge": {
-        "id": "e-eq-revenue",
-        "source": "eq",
         "target": "revenue",
         "kind": "becomes",
-        "explanation": "Cups sold times price becomes the day's revenue."
+        "explanation": "Cups sold times price per cup is the revenue."
       }
     },
     {
@@ -212,17 +163,7 @@
         "source": "costs",
         "target": "profit",
         "kind": "decreases",
-        "explanation": "Every cost paid comes out of profit."
-      }
-    },
-    {
-      "op": "add_edge",
-      "edge": {
-        "id": "e-cups-beans",
-        "source": "cups",
-        "target": "beans",
-        "kind": "requires",
-        "explanation": "Every cup needs beans and milk, so this cost grows with sales."
+        "explanation": "Every cost paid comes out of revenue, so higher costs mean less profit."
       }
     }
   ]

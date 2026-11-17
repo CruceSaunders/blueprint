@@ -53,9 +53,9 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <div data-draw className="mt-12">
-            <div className="shot draw map-scroll">
-              <ShotImage shot={SHOTS.map} sizes="(min-width: 1200px) 1150px, 760px" />
+          <div data-draw className="mx-auto mt-12 max-w-[40rem]">
+            <div className="shot draw">
+              <ShotImage shot={SHOTS.map} sizes="(min-width: 640px) 640px, 100vw" />
             </div>
           </div>
         </section>

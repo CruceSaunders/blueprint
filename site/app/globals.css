@@ -145,18 +145,6 @@ body {
   }
 }
 
-/* The whole map stays legible on phones: it keeps a readable width and scrolls sideways. */
-@media (max-width: 639px) {
-  .map-scroll {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-  }
-  .map-scroll img {
-    width: 760px;
-    max-width: none;
-  }
-}
-
 /* Buttons */
 .btn {
   display: inline-flex;
