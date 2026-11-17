@@ -121,6 +121,15 @@ The app has the same "Tidy" action (same elk options; `mcp/src/layout.ts` is cop
 - `--mcp`: serves the MCP server over stdio from the Electron main process (headless: no window, no Dock icon, no dialogs;
   stdout carries only protocol bytes, logs go to stderr; exits when stdin closes). Needs no Node install and works with
   the RunAsNode fuse off. Snapshots run this same binary.
+- Headless modes and LaunchServices: `--mcp`, `--snapshot`, `--connect` and `--disconnect` run background-only (activation
+  policy `prohibited`, no Dock icon) and never take the single-instance lock or claim `blueprint://`. macOS still checks them
+  in under the app's bundle id before any code runs, so a Dock click, Finder open, `open -a`, or a `blueprint://` link may be
+  delivered to one of them. They forward it: start the GUI from their own executable (detached, stdio ignored, so it outlives
+  them and `--mcp` stdout stays protocol-only) with `--activate` or `--open=<p>/<s>/<v>`. The GUI's single-instance lock
+  dedupes; a running GUI receives the request as `second-instance`, shows its window (focus only for `--activate`) and
+  navigates. Regression test: `app/scripts/launch-test.mjs` (packaged build).
+- Test probe: with `BLUEPRINT_GUI_STATUS=1` the GUI writes `<store>/.gui-status.json`, uses a profile under the store (its
+  own single-instance lock), never takes focus and does not claim `blueprint://`.
 - `--connect [--tools claude,cursor,codex] [--dry-run]`: registers `<this binary> --mcp` as MCP server `blueprint` in
   each detected (or listed) tool and installs the skills; prints every change. Claude Code: `~/.claude.json`
   `mcpServers`; Cursor: `~/.cursor/mcp.json`; Codex: `~/.codex/config.toml` `[mcp_servers.blueprint]`. Skills:

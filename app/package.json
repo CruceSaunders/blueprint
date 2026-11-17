@@ -1,7 +1,7 @@
 {
   "name": "blueprint",
   "productName": "Blueprint",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Blueprint: local visual maps of ideas and systems",
   "main": "dist-electron/main.js",
@@ -13,7 +13,8 @@
     "package": "electron-builder --config electron-builder.config.cjs --mac --publish never",
     "test:ui": "node scripts/interaction-test.mjs",
     "package:dir": "electron-builder --config electron-builder.config.cjs --mac dir --publish never",
-    "test:net": "node scripts/network-test.mjs"
+    "test:net": "node scripts/network-test.mjs",
+    "test:launch": "node scripts/launch-test.mjs"
   },
   "devDependencies": {
     "@radix-ui/react-context-menu": "^2.4.1",

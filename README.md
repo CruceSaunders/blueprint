@@ -78,8 +78,8 @@ From-source builds are ad-hoc signed. To produce a signed and notarized release,
 The MCP server also runs straight from source with Node: `node mcp/dist/index.js`.
 
 Tests: `cd mcp && npm run smoke` (MCP over stdio), `cd app && npm run test:ui` (interaction test against the
-development build), `node app/scripts/network-test.mjs` and `node app/scripts/connect-test.mjs` (against the
-packaged app in `app/release/`).
+development build), `node app/scripts/network-test.mjs`, `node app/scripts/connect-test.mjs` and `node app/scripts/launch-test.mjs`
+(against the packaged app in `app/release/`).
 
 See [SPEC.md](SPEC.md) for the file format, tools and node/edge vocabulary.
 

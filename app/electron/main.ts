@@ -89,6 +89,9 @@ app.commandLine.appendSwitch("no-pings");
 
 // ---------- headless modes: no Dock icon, no focus, never a dialog ----------
 if (HEADLESS) {
+  // Background-only from the first line: no Dock icon, no menu bar, never activates. (macOS still lists the process
+  // under this bundle id - LaunchServices checks it in before any JS runs - so see forwardToGui below.)
+  app.setActivationPolicy("prohibited");
   dialog.showErrorBox = (title: string, content: string) => {
     process.stderr.write(`blueprint: ${title} ${content}\n`);
   };
@@ -156,9 +159,51 @@ let rendererReady = false;
 let pendingOpen: VisualIds | null = HEADLESS && uiShotArg === undefined && uiTestArg === undefined ? null : parseIds(argValue(argv, "--open"));
 let launchedForLink = pendingOpen !== null;
 
+const idsPath = (ids: VisualIds) => `${ids.projectId}/${ids.systemId}/${ids.visualId}`;
+let lastDelivered: string | null = null;
+let opensDelivered = 0;
+
+/**
+ * Test probe: when BLUEPRINT_GUI_STATUS=1, the GUI writes `<store>/.gui-status.json` (pid, executable, window count,
+ * last visual delivered to the renderer). Off by default; nothing else reads it.
+ */
+function writeStatus() {
+  if (HEADLESS || process.env.BLUEPRINT_GUI_STATUS !== "1") return;
+  try {
+    const wins = BrowserWindow.getAllWindows();
+    const body = { pid: process.pid, exe: process.execPath, windows: wins.length, visible: wins.filter((w) => w.isVisible()).length, lastOpen: lastDelivered, opens: opensDelivered, at: new Date().toISOString() };
+    const f = path.join(store.ROOT, ".gui-status.json");
+    fs.writeFileSync(f + ".tmp", JSON.stringify(body) + "\n");
+    fs.renameSync(f + ".tmp", f);
+  } catch { /* probe only */ }
+}
+
 function sendOpen(ids: VisualIds) {
-  if (mainWindow && rendererReady) mainWindow.webContents.send("open-path", ids);
-  else pendingOpen = ids;
+  if (mainWindow && rendererReady) {
+    mainWindow.webContents.send("open-path", ids);
+    lastDelivered = idsPath(ids);
+    opensDelivered++;
+    writeStatus();
+  } else pendingOpen = ids;
+}
+
+/** Bring the GUI window back (create it if the app is running with none). `focus` only for user activation. */
+function surface(focus: boolean) {
+  if (!app.isReady()) return;
+  if (QUIET) focus = false;
+  if (!mainWindow) { if (!focus) launchedForLink = true; createMainWindow(); }
+  else if (focus) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); }
+  else if (!mainWindow.isVisible()) mainWindow.showInactive();
+  if (focus) app.focus({ steal: true });
+}
+/** Test mode (BLUEPRINT_GUI_STATUS=1): the GUI never takes focus, so automated LaunchServices tests stay in the background. */
+const QUIET = process.env.BLUEPRINT_GUI_STATUS === "1";
+const ACTIVATE = !HEADLESS && !QUIET && has("--activate");
+
+if (!HEADLESS && QUIET) {
+  // Test mode gets its own profile (and so its own single-instance lock), so a test GUI can never hand its
+  // arguments to a Blueprint the user has open.
+  app.setPath("userData", path.join(store.ROOT, ".gui-profile"));
 }
 
 if (!HEADLESS) {
@@ -169,17 +214,63 @@ if (!HEADLESS) {
       if (!ids) return;
       if (!mainWindow) launchedForLink = true;
       sendOpen(ids);
+      surface(false);
     });
   });
   if (!app.requestSingleInstanceLock()) {
-    app.quit();
+    // Another GUI owns the lock; Electron has already forwarded our argv to it as `second-instance`.
+    app.exit(0);
   } else {
     app.on("second-instance", (_e, args) => {
       const ids = parseIds(argValue(args, "--open")) ?? parseDeepLink(args.find((a) => a.startsWith("blueprint://")) ?? "");
       if (ids) sendOpen(ids);
+      surface(!ids || args.includes("--activate"));
+      writeStatus();
     });
   }
-  if (app.isPackaged) app.setAsDefaultProtocolClient("blueprint");
+  // Only the GUI claims blueprint:// links (headless modes never call this).
+  if (app.isPackaged && process.env.BLUEPRINT_GUI_STATUS !== "1") app.setAsDefaultProtocolClient("blueprint");
+}
+
+/**
+ * Headless processes (`--mcp`, `--snapshot`, `--connect`) share the GUI's bundle id, and macOS registers them with
+ * LaunchServices before any JS runs. So while one is alive, a Dock click, Finder open, `open -a Blueprint` or a
+ * blueprint:// link can be delivered to it instead of starting the GUI. Forward every such request to the real GUI:
+ * start it from this same executable (detached, so it outlives this process and the AI session that started it;
+ * stdio ignored, so `--mcp` stdout stays protocol-only). The GUI's single-instance lock dedupes: if a GUI is already
+ * running, the new one hands over its argv via `second-instance` and exits.
+ */
+let lastForward = 0;
+function forwardToGui(extra: string[]) {
+  const now = Date.now();
+  if (now - lastForward < 750) return;
+  lastForward = now;
+  try {
+    const env = { ...process.env };
+    delete env.ELECTRON_RUN_AS_NODE;
+    const args = [...(app.isPackaged ? [] : [app.getAppPath()]), ...extra];
+    const child = spawn(process.execPath, args, { detached: true, stdio: "ignore", env, cwd: os.homedir() });
+    child.on("error", (e) => process.stderr.write(`blueprint: could not start the app window: ${e.message}\n`));
+    child.unref();
+    process.stderr.write(`blueprint: forwarded ${extra.join(" ") || "launch"} to the app window process\n`);
+  } catch (e: any) {
+    process.stderr.write(`blueprint: could not start the app window: ${String(e?.message ?? e)}\n`);
+  }
+}
+if (HEADLESS && (CLI || SNAPSHOT)) {
+  app.on("will-finish-launching", () => {
+    app.on("open-url", (event, url) => {
+      event.preventDefault();
+      const ids = parseDeepLink(url);
+      forwardToGui(ids ? [`--open=${idsPath(ids)}`] : ["--activate"]); // one token: Chromium may reorder argv
+    });
+    app.on("open-file", (event) => {
+      event.preventDefault();
+      forwardToGui(["--activate"]);
+    });
+  });
+  // macOS "reopen" (Dock click, `open -a`, Finder double-click on a running app).
+  app.on("activate", () => forwardToGui(["--activate"]));
 }
 
 const rendererIndex = path.join(__dirname, "..", "dist", "index.html");
@@ -290,9 +381,11 @@ function registerIpc() {
   ipcMain.on("renderer-ready", () => {
     rendererReady = true;
     if (pendingOpen && mainWindow) {
-      mainWindow.webContents.send("open-path", pendingOpen);
+      const ids = pendingOpen;
       pendingOpen = null;
+      sendOpen(ids);
     }
+    writeStatus();
   });
 }
 
@@ -370,12 +463,14 @@ function createMainWindow() {
   mainWindow = win;
   win.once("ready-to-show", () => {
     // Opened by a deep link / --open (e.g. from the MCP server's `open -g`): appear without stealing focus.
-    if (launchedForLink) win.showInactive();
-    else win.show();
+    if ((launchedForLink && !ACTIVATE) || QUIET) win.showInactive();
+    else { win.show(); if (ACTIVATE) app.focus({ steal: true }); }
+    writeStatus();
   });
   win.on("closed", () => {
     mainWindow = null;
     rendererReady = false;
+    writeStatus();
   });
   void win.loadFile(rendererIndex);
   startWatcher(win);
@@ -486,10 +581,7 @@ app.whenReady().then(async () => {
   app.setActivationPolicy("regular");
   buildMenu();
   createMainWindow();
-  app.on("activate", () => {
-    if (!mainWindow) createMainWindow();
-    else mainWindow.show();
-  });
+  app.on("activate", () => surface(true));
 });
 
 function runUiShot(out: string) {
