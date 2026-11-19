@@ -25,6 +25,14 @@ The skill files in this folder are original writing for Blueprint unless a secti
 - Licence: MIT. Copyright (c) 2025 Cathryn Lavery. The MIT permission notice applies: "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED."
 - Adapted ideas (reworded): a picker from what the reader must see to a diagram type, mapped here onto Blueprint arrangements, shapes, groups and edge kinds (blueprint-choose-the-drawing); choosing a behaviour pattern before the type, with six of its patterns rewritten as Blueprint builds (blueprint-choose-the-drawing); restraint rules (merge nodes that always travel together, drop lines the layout already shows, one or two focal nodes, ask whether prose or a table would do, state the plan before drawing, a smaller node budget) in the guide's design philosophy and the review pass in blueprint-declutter-and-svg-craft. No text was copied; every sentence was written fresh for Blueprint, and its HTML/SVG output rules were not used.
 
+### fireworks-tech-graph, by yizhiyanhua-ai (MIT)
+- Source: https://github.com/yizhiyanhua-ai/fireworks-tech-graph, `SKILL.md` (checked 2026-11-18)
+- Licence: MIT. The MIT permission notice above applies to this source as well; copyright remains with its authors.
+- Adapted ideas (reworded): fix an overfull diagram by splitting rather than shrinking its labels, and check the drawn parts and links against the request before reporting (blueprint-declutter-and-svg-craft). No text was copied.
+
+### blueprint-product-map and blueprint-business-map
+- Original writing for Blueprint (2026-11-18). No open-source wireframe or business-diagram skill of usable quality and licence was found; the wireframe grammar, view catalogue and business rules were written fresh.
+
 ### information-overload skill (owned by the Blueprint author)
 - The purpose test, "one home per fact" and title/caption merge rules in blueprint-declutter-and-svg-craft are adapted from the author's own private skill. Its product-specific case study and quotes were not used. No third-party licence applies.
 

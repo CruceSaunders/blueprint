@@ -1,6 +1,6 @@
 ---
 name: visualize
-description: Draw visual maps of ideas and systems in Blueprint, a local Mac app. Use when the user says "visualize this", "map this system", "add this to Blueprint", "diagram this in Blueprint", or types "/visualize <what they want>".
+description: Draw visual maps of ideas and systems in Blueprint, a local Mac app - software architecture, app and website ideas, user flows and wireframes, sales processes, teams and AI agent crews, business models, or any idea. Use when the user says "visualize this", "map this system", "sketch my app idea", "draw our sales process", "add this to Blueprint", "diagram this in Blueprint", or types "/visualize <what they want>".
 ---
 
 # /visualize: put it in Blueprint
@@ -10,6 +10,9 @@ Blueprint is a local Mac app (files in ~/Blueprint/) for storing visual maps of 
 ## Procedure
 1. Call the `blueprint` MCP tool `guide` first and follow it (the same text is reproduced below). If the drawing fits one of the topics it lists, call `guide({topic})` for that method too; if you are unsure which drawing fits, call `guide({topic: "choose-the-drawing"})`. If no `blueprint` tools are loaded in this session, say so plainly (the MCP server is not connected here; run `Blueprint --connect` or restart the client) and stop; do not fake it.
 2. `list_projects`, then `list_systems`. Reuse the fitting project/system. Create what is missing (`create_project`, `create_system`, `create_visual`). Ask only if it is genuinely ambiguous which project this belongs to.
+   - The sidebar is a set of dropdowns: Project (a venture, product or area of life) > System (one idea or mechanism) > Visual (one view of it). File new work where the user would look for it: an app idea is a system in its venture's project, with one visual per view (concept, screen-map, a user flow, mvp-scope). A loose idea with no home goes in a project named `Ideas`.
+   - Pick the mode from the request. **Ideate** ("sketch", "what if", "brainstorm"): draw the proposal, mark undecided parts `state: "idea"` and open issues `question`. **Review** ("review", "audit", "how does X work today"): draw what is true now from the user's words or the real code and files, mark built parts `built`, and say what is missing or risky in the system notes.
+   - Topic shortcuts: app, website, screens, user flow, wireframe, MVP -> `product-map`; sales, pipeline, go-to-market, team, org, AI agents, business model -> `business-map`; services, architecture -> `system-map`.
 3. Build the visual with `apply` (omit positions; auto-layout handles it). Fix any validation errors it returns and resend.
 4. Call `snapshot`, actually look at the image, fix overlaps, clutter or wrong relationships with another `apply`, and re-snapshot if you changed much.
 5. Call `open` (background, does not steal focus), then report in two lines: what you drew and where it lives (project / system / visual).

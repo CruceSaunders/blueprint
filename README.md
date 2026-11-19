@@ -7,6 +7,17 @@ and opens it for you. Everything stays on your Mac as plain JSON files.
 
 ![A Blueprint visual](docs/screenshot.png)
 
+## What's new in 0.2.2
+
+- **Apps, websites and businesses.** Two new guide topics. `product-map` draws an app or site idea as a
+  concept hub, a screen map, user flows through low-fidelity wireframe screens, and a Now / Next / Later scope.
+  `business-map` draws sales pipelines, go-to-market, business models, teams that mix people and AI agents,
+  and agent crews with their human approval gates.
+- **Ideate or review.** `/visualize` now files work into the Project > System > Visual dropdowns where you would
+  look for it, marks undecided parts as ideas while you brainstorm, and draws what is true today when you review.
+- **Two more review checks:** split an overfull map instead of shrinking its labels, and check every part and link
+  you asked for is on the canvas. Adapted from [fireworks-tech-graph](https://github.com/yizhiyanhua-ai/fireworks-tech-graph) (MIT).
+
 ## What's new in 0.2.1
 
 - **A drawing picker for the AI.** A new `choose-the-drawing` guide topic maps 19 common diagram types

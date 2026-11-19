@@ -22,6 +22,8 @@ description: Load for the review pass after any Blueprint visual is written, and
 ### Common mistakes
 - **Fixing layout by hand first.** Fix: remove clutter, choose a better arrangement and relayout; hand placement breaks symmetry and is a last resort.
 - **Explanations on canvas.** A note restating what a card's `explanation` says. Fix: delete the note.
+- **Shrinking to fit.** Text clipped, so the title is cut to two words that no longer say what the part is. Fix: split the visual or move detail to `explanation`; never trade meaning for fit.
+- **Drawn but not asked.** The snapshot is tidy but a part or link the user named is missing, renamed or reversed. Fix: before reporting, check every part and relationship in the request against the canvas.
 - **Splitting too late.** 20 nodes "because it is all related". Fix: overview with one card per area, then a visual per area.
 
 ## Part 2: drawing art

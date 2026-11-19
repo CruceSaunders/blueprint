@@ -15,7 +15,7 @@ import { applyOps, boxesOf, visualLayout } from "./apply.js";
 import { diagnose, tidiness, ARRANGEMENTS } from "./layout.js";
 import { ASSET_EXTS, checkContent, readSource } from "./assets.js";
 
-export const VERSION = "0.2.1";
+export const VERSION = "0.2.2";
 
 /** How to run the app for `snapshot`: a binary plus any leading args (e.g. the app dir for an unpackaged Electron). */
 export interface AppLauncher { bin: string; args: string[] }

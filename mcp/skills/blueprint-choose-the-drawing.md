@@ -16,6 +16,8 @@ description: Load when you are unsure which drawing fits in Blueprint, or the us
 ## Type picker
 | If the reader must see... | Draw in Blueprint | Then load |
 |---|---|---|
+| An app or website idea: its screens, a user flow, wireframes, MVP scope | `tree` of screens or `flow` RIGHT of screens; wireframe `art` on the key screens | product-map |
+| A sales pipeline, go-to-market, business model, a team or AI agent crew | `column` of stages, `hub` around the company, or `tree` of roles | business-map |
 | The parts and what connects them (architecture) | `flow` RIGHT, or `hub` when one part is central; parts as `card`s; a `boundary` group for inside vs outside | system-map |
 | Steps in order with branches (process, flowchart) | `flow`; steps as `pill`s, decisions as `diamond`s with one labelled edge per answer | process-flow |
 | States and what moves between them (state machine, lifecycle) | `flow` DOWN; states as `pill`s; `becomes` with the trigger as label; end states toned | process-flow |
